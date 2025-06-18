@@ -1,0 +1,82 @@
+#pragma once
+
+#include <string.h>
+#include <string>
+#include "ICommand.hpp"
+#include <vector>
+#include <memory>
+#include "utils.hpp"
+#include "Process.hpp"
+#include <atomic>
+#include <deque>
+#include <mutex>
+#include "screenTerminal.hpp"
+
+class Process {
+private:
+	int pid;
+	std::string name;
+	std::vector<std::unique_ptr<ICommand>> commandList;
+	//std::shared_ptr<std::mutex> logsMtx;
+	std::deque<std::string> logs;
+
+	std::shared_ptr<Screen> screenRef;
+
+	int commandIndex = 0;
+	int cpuCoreID = -1;
+	int totalLines;
+	std::string creationDate = getTime();
+
+	//struct RequirementFlags {
+	//	bool requireFiles;
+	//	int numFiles;
+	//	bool requireMemory;
+	//	int memoryRequired;
+	//};
+
+	enum ProcessState {
+		READY,
+		RUNNING,
+		WAITING,
+		FINISHED
+	};
+	std::atomic<ProcessState> state = READY;
+
+	//Process(int pid, std::string name, RequirementFlags requirements);
+
+	//void addCommand(ICommand::CommandType cmdType);
+	//void executeCommand() const;
+
+	//bool isFinished() const;
+	//int getRemainingTime() const;
+
+
+
+
+public:
+	Process(int pid, const std::string& name, int totalLines, std::shared_ptr<Screen> screen)
+		: pid(pid), name(name), totalLines(totalLines), screenRef(screen){}
+	void generateRandomCommands();
+	void runCommand();
+	void beginProcess(int);
+	void moveToNextLine();
+	int getCommandIndex() const;
+	int getLinesOfCode() const;
+	int getPID() const;
+	int getCpuCoreID() const;
+	std::string getName();
+	std::string getDate();
+	ProcessState getState() const;
+	
+	void setWaiting() {
+		state = WAITING;
+	}
+	void setFinished();
+	std::deque<std::string> getLogs() const {
+		//std::lock_guard<std::mutex> logLock(mtx);
+		return logs;
+	}
+
+
+	//RequirementFlags requirements;
+};
