@@ -13,17 +13,15 @@ void PrintCommand::execute(int cpuCoreID) {
 	//ICommand::execute();
 	
 	
+	std::string preText = getTime() + "  Core:" + std::to_string(cpuCoreID) + " ";
 
-	//std::string preText = getTime() + "  Core:" + std::to_string(cpuCoreID) + " ";
+	std::string fileName = "file_" + std::to_string(pid) + ".txt";
+	std::string path = "TextOutputs/" + fileName;
 
-	//std::string fileName = "file_" + std::to_string(pid) + ".txt";
-	////std::string path = "C:\\Users\\admin\\Desktop\\Mark\\Mark's Work\\College\\3rd Year 3rd Term\\CSOPESY\\TextOutputs\\" + fileName;
-	//std::string path = "TextOutputs/" + fileName;
+	std::ofstream MyFile(path, std::ios_base::app);
 
-	//std::ofstream MyFile(path, std::ios_base::app);
-
-	//if (MyFile.is_open()) {
-	//	MyFile << preText + text << std::endl;
-	//}
-	//MyFile.close();
+	if (MyFile.is_open()) {
+		MyFile << preText + text << std::endl;
+	}
+	MyFile.close();
 }
