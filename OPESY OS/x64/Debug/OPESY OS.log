@@ -1,2 +1,69 @@
-﻿  PrintCommand.cpp
+﻿  AddCommand.cpp
+C:\Users\admin\Desktop\Mark\Mark's Work\College\3rd Year 3rd Term\CSOPESY\MCO\OPESY OS\AddCommand.cpp(23,19): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+C:\Users\admin\Desktop\Mark\Mark's Work\College\3rd Year 3rd Term\CSOPESY\MCO\OPESY OS\AddCommand.cpp(49,19): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+  CoreObject.cpp
+  DeclareCommand.cpp
+  ICommand.cpp
+  OPESY OS.cpp
+C:\Users\admin\Desktop\Mark\Mark's Work\College\3rd Year 3rd Term\CSOPESY\MCO\OPESY OS\OPESY OS.cpp(193,16): warning C4244: 'initializing': conversion from 'double' to 'int', possible loss of data
+C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.41.34120\include\xutility(389,75): warning C4244: 'argument': conversion from 'uint64_t' to 'int', possible loss of data
+  (compiling source file 'OPESY%20OS.cpp')
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.41.34120\include\xutility(389,75):
+      the template instantiation context (the oldest one first) is
+          C:\Users\admin\Desktop\Mark\Mark's Work\College\3rd Year 3rd Term\CSOPESY\MCO\OPESY OS\OPESY OS.cpp(88,28):
+          see reference to function template instantiation 'std::shared_ptr<_Ty> std::make_shared<Scheduler,int&,int,uint64_t&,int&,int&,std::string&,int&>(int &,int &&,uint64_t &,int &,int &,std::string &,int &)' being compiled
+          with
+          [
+              _Ty=Scheduler
+          ]
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.41.34120\include\memory(2906,46):
+          see reference to function template instantiation 'std::_Ref_count_obj2<Scheduler>::_Ref_count_obj2<int&,_Ty,uint64_t&,int&,int&,std::string&,int&>(int &,_Ty &&,uint64_t &,int &,int &,std::string &,int &)' being compiled
+          with
+          [
+              _Ty=int
+          ]
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.41.34120\include\memory(2095,18):
+          see reference to function template instantiation 'void std::_Construct_in_place<_Ty,int&,int,uint64_t&,int&,int&,std::string&,int&>(_Ty &,int &,int &&,uint64_t &,int &,int &,std::string &,int &) noexcept(false)' being compiled
+          with
+          [
+              _Ty=Scheduler
+          ]
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.41.34120\include\xutility(399,14):
+          see reference to function template instantiation '_Ty *std::construct_at<_Ty,int&,int,uint64_t&,int&,int&,std::string&,int&>(_Ty *const ,int &,int &&,uint64_t &,int &,int &,std::string &,int &) noexcept(<expr>)' being compiled
+          with
+          [
+              _Ty=Scheduler
+          ]
+  
+C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.41.34120\include\xutility(403,82): warning C4244: 'argument': conversion from 'uint64_t' to 'int', possible loss of data
+  (compiling source file 'OPESY%20OS.cpp')
+  
+C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.41.34120\include\xutility(390,90): warning C4244: 'argument': conversion from 'uint64_t' to 'int', possible loss of data
+  (compiling source file 'OPESY%20OS.cpp')
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.41.34120\include\xutility(390,90):
+      the template instantiation context (the oldest one first) is
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.41.34120\include\memory(2095,18):
+          see reference to function template instantiation 'void std::_Construct_in_place<_Ty,int&,int,uint64_t&,int&,int&,std::string&,int&>(_Ty &,int &,int &&,uint64_t &,int &,int &,std::string &,int &) noexcept(false)' being compiled
+          with
+          [
+              _Ty=Scheduler
+          ]
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.41.34120\include\xutility(399,14):
+          see reference to function template instantiation '_Ty *std::construct_at<_Ty,int&,int,uint64_t&,int&,int&,std::string&,int&>(_Ty *const ,int &,int &&,uint64_t &,int &,int &,std::string &,int &) noexcept(false)' being compiled
+          with
+          [
+              _Ty=Scheduler
+          ]
+  
+  PrintCommand.cpp
+C:\Users\admin\Desktop\Mark\Mark's Work\College\3rd Year 3rd Term\CSOPESY\MCO\OPESY OS\PrintCommand.cpp(12,16): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+C:\Users\admin\Desktop\Mark\Mark's Work\College\3rd Year 3rd Term\CSOPESY\MCO\OPESY OS\PrintCommand.cpp(23,21): warning C4267: 'initializing': conversion from 'size_t' to 'uint16_t', possible loss of data
+  Process.cpp
+C:\Users\admin\Desktop\Mark\Mark's Work\College\3rd Year 3rd Term\CSOPESY\MCO\OPESY OS\Process.cpp(69,20): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+C:\Users\admin\Desktop\Mark\Mark's Work\College\3rd Year 3rd Term\CSOPESY\MCO\OPESY OS\Process.cpp(79,20): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+  Scheduler.cpp
+  SubCommand.cpp
+C:\Users\admin\Desktop\Mark\Mark's Work\College\3rd Year 3rd Term\CSOPESY\MCO\OPESY OS\SubCommand.cpp(23,19): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+C:\Users\admin\Desktop\Mark\Mark's Work\College\3rd Year 3rd Term\CSOPESY\MCO\OPESY OS\SubCommand.cpp(49,19): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+  Generating Code...
   OPESY OS.vcxproj -> C:\Users\admin\Desktop\Mark\Mark's Work\College\3rd Year 3rd Term\CSOPESY\MCO\OPESY OS\x64\Debug\OPESY OS.exe

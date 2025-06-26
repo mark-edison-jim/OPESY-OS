@@ -85,7 +85,7 @@ void initializeFunc(std::string* action) {
 	config.close();
     
     uint64_t instructionCount = (minInstructions == maxInstructions) ? minInstructions : getRandomInstructionCount(minInstructions, maxInstructions);
-    globalScheduler = std::make_shared<Scheduler>(numCPU, instructionCount, delayPerExec, batchFreq, scheduler, quantumCycles);
+    globalScheduler = std::make_shared<Scheduler>(numCPU, 10, instructionCount, delayPerExec, batchFreq, scheduler, quantumCycles);
     std::thread schedulerThread([scheduler = globalScheduler]() {
         globalScheduler->fcfs();
         });

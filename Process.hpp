@@ -28,7 +28,7 @@ private:
 	int totalLines;
 	std::string creationDate = getTime();
 
-	std::shared_ptr<std::unordered_map<std::string, uint16_t>> symbolTable;
+	std::shared_ptr<std::unordered_map<std::string, uint16_t>> symbolTable = std::make_shared<std::unordered_map<std::string, uint16_t>>();
 
 	//struct RequirementFlags {
 	//	bool requireFiles;
@@ -58,7 +58,8 @@ private:
 
 public:
 	Process(int pid, const std::string& name, int totalLines, std::shared_ptr<Screen> screen)
-		: pid(pid), name(name), totalLines(totalLines), screenRef(screen){}
+		: pid(pid), name(name), totalLines(totalLines), screenRef(screen){
+	}
 	void generateRandomCommands();
 	void runCommand();
 	void beginProcess(int);
@@ -70,7 +71,7 @@ public:
 	std::string getName();
 	std::string getDate();
 	ProcessState getState() const;
-	
+	void handleForInstruction(int, int);
 	void setWaiting() {
 		state = WAITING;
 	}
@@ -79,7 +80,7 @@ public:
 		//std::lock_guard<std::mutex> logLock(mtx);
 		return logs;
 	}
-
+	void commandSwitchCase(ICommand::CommandType, int, int);
 
 	//RequirementFlags requirements;
 };

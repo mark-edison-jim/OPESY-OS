@@ -138,8 +138,10 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="AddCommand.cpp" />
     <ClCompile Include="CoreObject.cpp" />
     <ClCompile Include="Cube.cpp" />
+    <ClCompile Include="DeclareCommand.cpp" />
     <ClCompile Include="Figlet.cc" />
     <ClCompile Include="Figlet_Font_standard.cc" />
     <ClCompile Include="ICommand.cpp" />
@@ -149,17 +151,21 @@
     <ClCompile Include="Process.cpp" />
     <ClCompile Include="Scheduler.cpp" />
     <ClCompile Include="screenTerminal.cpp" />
+    <ClCompile Include="SubCommand.cpp" />
     <ClCompile Include="utils.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="AddCommand.hpp" />
     <ClInclude Include="CoreObject.hpp" />
     <ClInclude Include="Cube.hpp" />
+    <ClInclude Include="DeclareCommand.hpp" />
     <ClInclude Include="Figlet.hh" />
     <ClInclude Include="ICommand.hpp" />
     <ClInclude Include="PrintCommand.hpp" />
     <ClInclude Include="Process.hpp" />
     <ClInclude Include="Scheduler.hpp" />
     <ClInclude Include="screenTerminal.hpp" />
+    <ClInclude Include="SubCommand.hpp" />
     <ClInclude Include="utils.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

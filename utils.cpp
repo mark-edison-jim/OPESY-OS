@@ -6,12 +6,16 @@
 #include <string>
 #include <vector>
 #include "Figlet.hh"
+#define NOMINMAX
 #include <Windows.h>
+#undef max
 #include <ctime>
 #include <sstream>
 #include <chrono>
 #include <iomanip>
 #include <random>
+#include <cstdint>
+#include <limits>
 
 #define RESET   "\033[0m"
 #define RED     "\033[31m"
@@ -55,6 +59,29 @@ int getConsoleHeight() {
     CONSOLE_SCREEN_BUFFER_INFO csbi;
     GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi);
     return csbi.srWindow.Bottom - csbi.srWindow.Top + 1;
+}
+
+bool fiftyFiftyChance() {
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::bernoulli_distribution dist(0.5); // 50% true, 50% false
+    return dist(gen);
+}
+
+int getRandomFromRange(int max) {
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<> distr(0, max);
+
+    return distr(gen);
+}
+
+uint16_t getRandomUint16() {
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<uint16_t> distr(0, std::numeric_limits<uint16_t>::max());
+
+    return distr(gen);
 }
 
 uint64_t getRandomInstructionCount(uint64_t minInstructions, uint64_t maxInstructions) {

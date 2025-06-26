@@ -28,7 +28,7 @@ private:
     std::condition_variable cv;
     uint32_t batchFreq;
     int currProcIdx = 0;
-    int numCommands = 1000;
+    int numCommands;
     int totalCores;
     int latestProcessID = 0;
     std::atomic<int> freeCores;
@@ -40,8 +40,8 @@ private:
     //std::vector<bool> coreBusy;
 
 public:
-    Scheduler(int availableCores, int numProcesses, int execDelay, int batchFreq, std::string mode, int quantum)
-        : totalCores(availableCores), freeCores(availableCores), numProcesses(numProcesses), execDelay(execDelay), batchFreq(batchFreq), mode(mode), quantum_cycle(quantum){
+    Scheduler(int availableCores, int numProcesses, int numCommands, int execDelay, int batchFreq, std::string mode, int quantum)
+        : numCommands(numCommands), totalCores(availableCores), freeCores(availableCores), numProcesses(numProcesses), execDelay(execDelay), batchFreq(batchFreq), mode(mode), quantum_cycle(quantum){
         if (availableCores <= 0) {
             throw std::invalid_argument("Number of cores must be greater than zero.");
         }   
