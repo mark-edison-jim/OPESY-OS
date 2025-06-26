@@ -57,6 +57,13 @@ int getConsoleHeight() {
     return csbi.srWindow.Bottom - csbi.srWindow.Top + 1;
 }
 
+uint64_t getRandomInstructionCount(uint64_t minInstructions, uint64_t maxInstructions) {
+    std::random_device rd;
+    std::mt19937_64 gen(rd());
+    std::uniform_int_distribution<uint64_t> distr(minInstructions, maxInstructions);
+    return distr(gen);
+}
+
 int spaceWidth = getConsoleWidth();
 int spaceHeight = getConsoleHeight()/2;
 

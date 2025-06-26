@@ -29,3 +29,4 @@ std::string commandMsg(std::string msg);
 std::vector<std::string> split(std::string str, char delimiter);
 int getConsoleWidth();
 int getConsoleHeight();
+uint64_t getRandomInstructionCount(uint64_t minInstructions, uint64_t maxInstructions);

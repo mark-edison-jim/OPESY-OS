@@ -28,7 +28,7 @@ private:
     std::condition_variable cv;
     uint32_t batchFreq;
     int currProcIdx = 0;
-    int numCommands = 100;
+    int numCommands = 1000;
     int totalCores;
     int latestProcessID = 0;
     std::atomic<int> freeCores;

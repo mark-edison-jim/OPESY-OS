@@ -11,6 +11,7 @@
 #include <deque>
 #include <mutex>
 #include "screenTerminal.hpp"
+#include <unordered_map>
 
 class Process {
 private:
@@ -26,6 +27,8 @@ private:
 	int cpuCoreID = -1;
 	int totalLines;
 	std::string creationDate = getTime();
+
+	std::shared_ptr<std::unordered_map<std::string, uint16_t>> symbolTable;
 
 	//struct RequirementFlags {
 	//	bool requireFiles;

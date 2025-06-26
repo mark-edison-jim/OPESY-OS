@@ -42,42 +42,16 @@ int numCPU = 0;
 std::string scheduler;
 int quantumCycles = 0;
 int batchFreq = 0;
-int minInstructions = 0;
-int maxInstructions = 0;
+uint64_t minInstructions = 0;
+uint64_t maxInstructions = 0;
 int delayPerExec = 0;
 
-//int times = 10;
-//int counter = times;
-//int total = (width + screenWidth + 2) * times;
-
-//void printMarquee(int offset) {
-//    int modulo = offset % (between + screenWidth);
-//    clear();
-//    for (int i = 0; i < height; ++i) {
-//        std::string line = art[i];
-//        std::string space(screenWidth, ' ');
-//        std::string wordSpace(between, ' ');
-//            
-//        std::string scrolled = (counter == times) ? space : line + wordSpace;
-//            
-//        scrolled += (counter > 1) ? line + wordSpace + line + wordSpace : line + space;
-//            
-//        // Show only visible part
-//        mvprintw(i, 0, "%s", scrolled.substr(modulo, screenWidth).c_str());
-//    }
-//    refresh();
-//    /*if (modulo == 0) {
-//        counter--;
-//    }*/
-//    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-//	offset++;
-//}
 
 void initializeFunc(std::string* action) {
     *action = commandMsg("'initialize' command recognized. Doing something.");
 	isInitialized = true;
     std::string line;
-    std::ifstream  config("config.txt");
+    std::ifstream config("config.txt");
     while (getline(config, line)) {
         std::istringstream iss(line);
         std::string key;
@@ -108,11 +82,14 @@ void initializeFunc(std::string* action) {
         }
     }
 
-    globalScheduler = std::make_shared<Scheduler>(numCPU, 10, delayPerExec, batchFreq, scheduler, quantumCycles);
+	config.close();
+    
+    uint64_t instructionCount = (minInstructions == maxInstructions) ? minInstructions : getRandomInstructionCount(minInstructions, maxInstructions);
+    globalScheduler = std::make_shared<Scheduler>(numCPU, instructionCount, delayPerExec, batchFreq, scheduler, quantumCycles);
     std::thread schedulerThread([scheduler = globalScheduler]() {
         globalScheduler->fcfs();
         });
-
+    
 
     schedulerThread.detach();
 
@@ -164,16 +141,6 @@ void screenTerminal() {
             }
             command = "";
         }
-        /*else if ((int)ch == 72) {
-            const auto& cmds = screens[activeScreen].getCommands();
-            if (hist_inc + 1 <= cmds.size()) hist_inc++;
-            if (!cmds.empty()) command = cmds[cmds.size() - hist_inc];
-        }
-        else if ((int)ch == 80) {
-            const auto& cmds = screens[activeScreen].getCommands();
-            if (hist_inc - 1 > 0) hist_inc--;
-            if (!cmds.empty()) command = cmds[cmds.size() - hist_inc];
-        }*/
         else if ((int)ch >= 32 && (int)ch <= 126) {
             command += ch;
         }
@@ -198,6 +165,44 @@ void screenTerminal() {
     std::cout << activeScr << ":\\> " << command << std::endl << std::endl;
 }
 
+
+std::ostringstream getProcessStats() {
+    std::ostringstream out;
+    std::ostringstream runningPOut;
+    std::ostringstream finishedPOut;
+
+
+    for (std::shared_ptr<CoreObject> core : globalScheduler->getCoresArray()) {
+        std::shared_ptr<Process> p = core->getProcess();
+        if (p) {
+            runningPOut << std::left << std::setw(12) << p->getName() <<
+                std::setw(30) << p->getDate() <<
+                std::setw(12) << "Core: " + std::to_string(p->getCpuCoreID()) <<
+                p->getCommandIndex() << "/" << p->getLinesOfCode() << std::endl;
+        }
+    }
+
+    for (std::shared_ptr<Process> p : globalScheduler->getFinishedQueue()) {
+        finishedPOut << std::left << std::setw(12) << p->getName() <<
+            std::setw(30) << p->getDate() <<
+            std::setw(12) << "Finished" <<
+            p->getCommandIndex() << "/" << p->getLinesOfCode() << std::endl;
+    }
+    int freeCores = globalScheduler->getFreeCores();
+    int coresUsed = numCPU - freeCores;
+    int cputil = coresUsed / 0.04;
+    out << "CPU Utilization: " + std::to_string(cputil) + " %" << std::endl;
+    out << "Cores Used: " + std::to_string(coresUsed) << std::endl;
+    out << "Cores Available: " + std::to_string(freeCores) << std::endl << std::endl;
+    out << "+-----------------------------------------------------------------------------------------+" << std::endl;
+    out << "Running Processes:" << std::endl;
+    out << runningPOut.str() << std::endl;
+    out << "Finished Processes:" << std::endl;
+    out << finishedPOut.str() << std::endl;
+    out << "+-----------------------------------------------------------------------------------------+" << std::endl << std::endl;
+
+    return out;
+}
 
 void screenFunc(std::string* action, std::vector<std::string> cmdTokens) {
     //*action = commandMsg("'screen' command recognized. Doing something.");
@@ -237,42 +242,7 @@ void screenFunc(std::string* action, std::vector<std::string> cmdTokens) {
         std::string mode = cmdTokens[1];
         if (mode == "-ls") {
 
-            std::ostringstream out;
-            std::ostringstream runningPOut;
-            std::ostringstream finishedPOut;
-            
-
-            for (std::shared_ptr<CoreObject> core : globalScheduler->getCoresArray()) {
-				std::shared_ptr<Process> p = core->getProcess();
-                if (p) {
-                    runningPOut << std::left << std::setw(12) << p->getName() <<
-                        std::setw(30) << p->getDate() <<
-                        std::setw(12) << "Core: " + std::to_string(p->getCpuCoreID()) <<
-                        p->getCommandIndex() << "/" << p->getLinesOfCode() << std::endl;
-                }
-            }
-
-            for (std::shared_ptr<Process> p : globalScheduler->getFinishedQueue()) {
-                finishedPOut << std::left << std::setw(12) << p->getName() <<
-                    std::setw(30) << p->getDate() <<
-                    std::setw(12) << "Finished" <<
-                    p->getCommandIndex() << "/" << p->getLinesOfCode() << std::endl;
-            }
-            int freeCores = globalScheduler->getFreeCores();
-            int coresUsed = numCPU - freeCores;
-            int cputil = coresUsed / 0.04;
-            out << "CPU Utilization: " + std::to_string(cputil) + " %" << std::endl;
-            out << "Cores Used: " + std::to_string(coresUsed) << std::endl;
-            out << "Cores Available: " + std::to_string(freeCores) << std::endl << std::endl;
-            out << "+-----------------------------------------------------------------------------------------+" << std::endl;
-            out << "Running Processes:" << std::endl;
-            out << runningPOut.str() << std::endl;
-            out << "Finished Processes:" << std::endl;
-            out << finishedPOut.str() << std::endl;
-            out << "+-----------------------------------------------------------------------------------------+" << std::endl << std::endl;
-
-
-            *action = out.str();
+            *action = getProcessStats().str();
         }
         else {
             *action = commandMsg("Invalid screen command. Use 'screen -s <name>' | 'screen -r <name>' | 'screen -ls'.");
@@ -313,7 +283,17 @@ void schedulerStopFunc(std::string* action) {
 }
 
 void reportUtilFunc(std::string* action) {
+
     *action = commandMsg("'report-util' command recognized. Doing something.");
+
+    std::string path = "report_util.txt";
+
+    std::ofstream MyFile(path);
+
+    if (MyFile.is_open()) {
+        MyFile << getProcessStats().str() << std::endl;
+    }
+    MyFile.close();
 }
 
 void handleInput(std::vector<std::string> cmdTokens) {

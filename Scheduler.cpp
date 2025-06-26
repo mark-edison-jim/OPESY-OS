@@ -31,22 +31,22 @@ void Scheduler::fcfs() {
 
 
         if (cpuCycle % (batchFreq+1) == 0 && makeProcesses.load()) {
-            if(latestProcessID < numProcesses)
+            //if(latestProcessID < numProcesses)
             generateProcess();
         }
         
-        if (latestProcessID == 1) {
-            for (int i = 0; i < 1; i++) {
+        //if (latestProcessID == 1) {
+        //    for (int i = 0; i < 1; i++) {
 
-            }
-        }
+        //    }
+        //}
 
         //if (latestProcessID >= numProcesses &&
         //    processQueue.empty() && 
         //    finishedQueue.size() == numProcesses){
         //    break;
         //}
-        
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
         cpuCycle++;
     }
 }
@@ -106,7 +106,7 @@ void Scheduler::addProcess(std::string processName) {
 }
 
 void Scheduler::generateProcess() {
-    std::string p_name = "Process_" + std::to_string(latestProcessID);
+    std::string p_name = "screen_0" + std::to_string(latestProcessID);
     auto newProcess = std::make_shared<Process>(latestProcessID, p_name, numCommands, addScreen(p_name, latestProcessID, numCommands));
 
 	newProcess->generateRandomCommands();

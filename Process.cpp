@@ -30,8 +30,8 @@ void Process::moveToNextLine()
 
 void Process::generateRandomCommands() {
 	for (int i = 0; i < totalLines; ++i) {
-		std::string text = "Writing " + std::to_string(i+1) + " from " + getName();
-		commandList.push_back(std::make_unique<PrintCommand>(pid, text));
+		std::string text = "\"Hello World " + std::to_string(i+1) + " from " + getName() + "!\"";
+		commandList.push_back(std::make_unique<PrintCommand>(pid, text, symbolTable));
 	}
 }
 
@@ -41,7 +41,7 @@ void Process::beginProcess(int coreID) {
 }
 
 void Process::runCommand(){
-	commandList[commandIndex]->execute();
+	commandList[commandIndex]->execute(cpuCoreID);
 	std::string output = "(" + getTime() + ")  Core:" + std::to_string(cpuCoreID) + " \"" + commandList[commandIndex]->getText() + "\"";
 	moveToNextLine();
 	//std::lock_guard<std::mutex> logLock(*logsMtx);
