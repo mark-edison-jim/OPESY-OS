@@ -4,6 +4,7 @@
 #include "DeclareCommand.hpp"
 #include "AddCommand.hpp"
 #include "SubCommand.hpp"
+#include "SleepCommand.hpp"
 #include <chrono>
 #include <thread> 
 
@@ -36,23 +37,23 @@ void Process::commandSwitchCase(ICommand::CommandType type, int remainingIns, in
 	{
 	case ICommand::PRINT: {
 		std::string text = "\"Hello World from <" + getName() + ">!\"";
-		commandList.push_back(std::make_unique<PrintCommand>(pid, text, symbolTable));
+		commandList.push_back(std::make_unique<PrintCommand>(pid, text, symbolTable, false));
 		break;
 	}
 	case ICommand::DECLARE: {
-		commandList.push_back(std::make_unique<DeclareCommand>(pid, symbolTable));
+		commandList.push_back(std::make_unique<DeclareCommand>(pid, symbolTable, false));
 		break;
 	}
 	case ICommand::ADD: {
-		commandList.push_back(std::make_unique<AddCommand>(pid, symbolTable));
+		commandList.push_back(std::make_unique<AddCommand>(pid, symbolTable, false));
 		break;
 	}
 	case ICommand::SUBTRACT: {
-		commandList.push_back(std::make_unique<SubCommand>(pid, symbolTable));
+		commandList.push_back(std::make_unique<SubCommand>(pid, symbolTable, false));
 		break;
 	}
 	case ICommand::SLEEP: {
-
+		commandList.push_back(std::make_unique<SleepCommand>(pid, symbolTable, false));
 		break;
 	}
 	case ICommand::FOR: {
@@ -61,6 +62,30 @@ void Process::commandSwitchCase(ICommand::CommandType type, int remainingIns, in
 	}
 	default:
 		break;
+	}
+}
+
+void Process::fixedSymbols() {
+	std::vector<std::string> varNames{ "x", "y", "z" };
+	for (int i = 0; i < 3; i++) {
+
+		symbolTable->insert({ varNames[i], 0 });
+	}
+}
+
+void Process::fixedCommandSet() {
+	std::vector<std::string> varNames{ "x", "y", "z" };
+	for (int i = 0; i < 100; i++) {
+		for (int j = 0; j < 3; j++) {
+			auto add = std::make_unique<AddCommand>(pid, symbolTable, false);
+			add->setExplicit(varNames[j], varNames[j], 0, "", 1);
+			commandList.push_back(std::move(add));
+
+			std::string text = "";
+			auto print = std::make_unique<PrintCommand>(pid, text, symbolTable, false);
+			print->setExplicit(varNames[j]);
+			commandList.push_back(std::move(print));
+		}
 	}
 }
 
@@ -102,7 +127,14 @@ void Process::runCommand(){
 		//screenRef->addCommand("", commandList[commandIndex]->getLog());
 	}
 
-	moveToNextLine();
+	if (commandList[commandIndex]->getCommandType() == ICommand::SLEEP) {
+		SleepCommand* inst = dynamic_cast<SleepCommand*>(commandList[commandIndex].get());
+		uint8_t sleepTime = inst->getSleepTime();
+		if (sleepTime <= 0)
+			moveToNextLine();
+	}else {
+		moveToNextLine();
+	}
 
 
 	if (commandIndex >= totalLines) {

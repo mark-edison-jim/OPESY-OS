@@ -27,7 +27,7 @@ std::pair<uint16_t, uint16_t> PrintCommand::getVariable(){
 	return { value, 0 };
 }
 
-PrintCommand::PrintCommand(int pid, std::string& text, std::shared_ptr<std::unordered_map<std::string, uint16_t>> symbolTable) : ICommand(PRINT, pid, symbolTable) {
+PrintCommand::PrintCommand(int pid, std::string& text, std::shared_ptr<std::unordered_map<std::string, uint16_t>> symbolTable, bool explicitDef) : ICommand(PRINT, pid, symbolTable), explicitDef(explicitDef) {
 	this->text = text;
 }
 
@@ -35,7 +35,10 @@ void PrintCommand::execute(int cpuCoreID) {
 	//ICommand::execute();
 
 	logText = "";
-	if (fiftyFiftyChance()) {
+	if (explicitDef) {
+		uint16_t value = (*symbolTable)[targVar];
+		text = "Value from : " + std::to_string(value);
+	}else if (fiftyFiftyChance()) {
 		if (!symbolTable->empty()) {
 			uint16_t value = getVariable().first;
 			std::string msg = "Value from : " + std::to_string(value);

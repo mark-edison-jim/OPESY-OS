@@ -31,5 +31,6 @@ int getConsoleWidth();
 int getConsoleHeight();
 uint64_t getRandomInstructionCount(uint64_t minInstructions, uint64_t maxInstructions);
 bool fiftyFiftyChance();
+uint8_t getRandomUint8();
 uint16_t getRandomUint16();
 int getRandomFromRange(int);

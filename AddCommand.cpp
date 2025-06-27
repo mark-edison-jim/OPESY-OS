@@ -45,6 +45,16 @@ std::pair<uint16_t, uint16_t> AddCommand::getVariable() {
     return { value1, value2 };
 }
 
+void AddCommand::computeExplicitValues() {
+    uint16_t left = exp_value1;
+    uint16_t right = exp_value2;
+    if (!exp_var1.empty())
+        left = (*symbolTable)[exp_var1];
+    if (!exp_var2.empty())
+        right = (*symbolTable)[exp_var2];
+    (*symbolTable)[targVar] = left + right;
+}
+
 void AddCommand::assignToVar(uint16_t result){
     int tableSize = symbolTable->size();
 
@@ -60,11 +70,15 @@ void AddCommand::assignToVar(uint16_t result){
 }
 
 
-AddCommand::AddCommand(int pid, std::shared_ptr<std::unordered_map<std::string, uint16_t>> symbolTable) : ICommand(ADD, pid, symbolTable) {
+AddCommand::AddCommand(int pid, std::shared_ptr<std::unordered_map<std::string, uint16_t>> symbolTable, bool explicitDef) : ICommand(ADD, pid, symbolTable), explicitDef(explicitDef) {
 	this->text = text;
 }
 
 void AddCommand::execute(int cpuCoreID) {
+	if (explicitDef) {
+		computeExplicitValues();
+		return;
+	}
 	//ICommand::execute();
     std::pair<uint16_t, uint16_t> values = getVariable();
     uint16_t firstValue = values.first;

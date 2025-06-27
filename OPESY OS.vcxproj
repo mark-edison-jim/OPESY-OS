@@ -145,12 +145,12 @@
     <ClCompile Include="Figlet.cc" />
     <ClCompile Include="Figlet_Font_standard.cc" />
     <ClCompile Include="ICommand.cpp" />
-    <ClCompile Include="mainTerminal.cpp" />
     <ClCompile Include="OPESY OS.cpp" />
     <ClCompile Include="PrintCommand.cpp" />
     <ClCompile Include="Process.cpp" />
     <ClCompile Include="Scheduler.cpp" />
     <ClCompile Include="screenTerminal.cpp" />
+    <ClCompile Include="SleepCommand.cpp" />
     <ClCompile Include="SubCommand.cpp" />
     <ClCompile Include="utils.cpp" />
   </ItemGroup>
@@ -165,6 +165,7 @@
     <ClInclude Include="Process.hpp" />
     <ClInclude Include="Scheduler.hpp" />
     <ClInclude Include="screenTerminal.hpp" />
+    <ClInclude Include="SleepCommand.hpp" />
     <ClInclude Include="SubCommand.hpp" />
     <ClInclude Include="utils.hpp" />
   </ItemGroup>

@@ -14,7 +14,7 @@
 
 class Scheduler : public std::enable_shared_from_this<Scheduler> {
 private:
-    int cpuCycle = 1;
+    int cpuCycle = 0;
     std::atomic<bool> makeProcesses = false;
     std::queue<std::shared_ptr<Process>> processQueue;
     std::vector<std::shared_ptr<Process>> finishedQueue;
@@ -26,9 +26,11 @@ private:
     std::mutex finishedMtx;
     std::mutex screensMtx;
     std::condition_variable cv;
+	uint16_t minInstructions;
+	uint16_t maxInstructions;
     uint32_t batchFreq;
     int currProcIdx = 0;
-    int numCommands;
+    //int numCommands;
     int totalCores;
     int latestProcessID = 0;
     std::atomic<int> freeCores;
@@ -37,11 +39,12 @@ private:
     std::string activeScreen;
     std::string mode;
     int quantum_cycle;
+	bool exitOS = false;
     //std::vector<bool> coreBusy;
 
-public:
-    Scheduler(int availableCores, int numProcesses, int numCommands, int execDelay, int batchFreq, std::string mode, int quantum)
-        : numCommands(numCommands), totalCores(availableCores), freeCores(availableCores), numProcesses(numProcesses), execDelay(execDelay), batchFreq(batchFreq), mode(mode), quantum_cycle(quantum){
+public:    
+    Scheduler(int availableCores, int numProcesses, uint16_t minIns, uint16_t maxIns, int execDelay, int batchFreq, std::string mode, int quantum)
+        : minInstructions(minIns), maxInstructions(maxIns), totalCores(availableCores), freeCores(availableCores), numProcesses(numProcesses), execDelay(execDelay), batchFreq(batchFreq), mode(mode), quantum_cycle(quantum){
         if (availableCores <= 0) {
             throw std::invalid_argument("Number of cores must be greater than zero.");
         }   
@@ -56,6 +59,10 @@ public:
     const std::queue<std::shared_ptr<Process>>& getProcessQueue() const {
         return processQueue;
     }
+    
+	void stopOS() {
+		exitOS = true;
+	}
 
     const std::vector<std::shared_ptr<Process>>& getFinishedQueue() const {
         return finishedQueue;
@@ -83,6 +90,7 @@ public:
     void checkCoreFinished();
     //bool getNextProcess(std::shared_ptr<Process>& out);
     void addProcess(std::string processName);
+    void generateFixedProcesses();
     void generateProcess();
 
     void makeProcess() {
@@ -131,7 +139,7 @@ public:
         return screens.find(name) != screens.end();
     }
 
-    std::shared_ptr<Screen> addScreen(const std::string& name, int pid, int totalLines) {
+    std::shared_ptr<Screen> addScreen(const std::string& name, int pid, uint16_t totalLines) {
         std::lock_guard<std::mutex> screensLock(screensMtx);
         auto screen = std::make_shared<Screen>(name, pid, totalLines);
         screens[name] = screen;

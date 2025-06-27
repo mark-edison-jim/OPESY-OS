@@ -84,6 +84,14 @@ uint16_t getRandomUint16() {
     return distr(gen);
 }
 
+uint8_t getRandomUint8() {
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<int> distr(0, std::numeric_limits<uint8_t>::max());
+
+    return static_cast<uint8_t>(distr(gen));
+}
+
 uint64_t getRandomInstructionCount(uint64_t minInstructions, uint64_t maxInstructions) {
     std::random_device rd;
     std::mt19937_64 gen(rd());

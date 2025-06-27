@@ -10,11 +10,11 @@ private:
     int coreID;
     int delay;
 	std::atomic<bool> processFinished = true;
-	std::atomic<int> coreCycle = 1;
+	std::atomic<int> coreCycle = 0;
     std::shared_ptr<Process> process;
     std::shared_ptr<std::binary_semaphore> coreSemaphore{0};
     std::shared_ptr<std::binary_semaphore> schedSemaphore{0};
-    int quantumCycleCounter = 0;
+    std::atomic<int> quantumCycleCounter = 0;
 
     //std::shared_ptr<Scheduler> scheduler;
 
@@ -32,7 +32,7 @@ public:
     }
 
     int getQuantumCycleCounter() {
-        return quantumCycleCounter;
+        return quantumCycleCounter.load();
     }
 
     void incrementQuantumCycleCounter() {
@@ -58,7 +58,7 @@ public:
     void initializeProcess();
     
     void resetCoreCycle() {
-        coreCycle = 1;
+        coreCycle = 0;
     }
 
 	int getCoreID() const {

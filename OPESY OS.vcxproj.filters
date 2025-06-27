@@ -21,9 +21,6 @@
     <ClCompile Include="OPESY OS.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="mainTerminal.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="screenTerminal.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -63,6 +60,9 @@
     <ClCompile Include="DeclareCommand.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="SleepCommand.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="utils.hpp">
@@ -99,6 +99,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="DeclareCommand.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SleepCommand.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

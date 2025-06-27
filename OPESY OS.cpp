@@ -84,8 +84,7 @@ void initializeFunc(std::string* action) {
 
 	config.close();
     
-    uint64_t instructionCount = (minInstructions == maxInstructions) ? minInstructions : getRandomInstructionCount(minInstructions, maxInstructions);
-    globalScheduler = std::make_shared<Scheduler>(numCPU, 10, instructionCount, delayPerExec, batchFreq, scheduler, quantumCycles);
+    globalScheduler = std::make_shared<Scheduler>(numCPU, 10, minInstructions, maxInstructions, delayPerExec, batchFreq, scheduler, quantumCycles);
     std::thread schedulerThread([scheduler = globalScheduler]() {
         globalScheduler->fcfs();
         });
@@ -171,10 +170,12 @@ std::ostringstream getProcessStats() {
     std::ostringstream runningPOut;
     std::ostringstream finishedPOut;
 
-
-    for (std::shared_ptr<CoreObject> core : globalScheduler->getCoresArray()) {
+    int coresUsed = 0;
+	std::vector<std::shared_ptr<CoreObject>> cores = globalScheduler->getCoresArray();
+    for (std::shared_ptr<CoreObject> core : cores) {
         std::shared_ptr<Process> p = core->getProcess();
         if (p) {
+            coresUsed++;
             runningPOut << std::left << std::setw(12) << p->getName() <<
                 std::setw(30) << p->getDate() <<
                 std::setw(12) << "Core: " + std::to_string(p->getCpuCoreID()) <<
@@ -182,16 +183,17 @@ std::ostringstream getProcessStats() {
         }
     }
 
+    int freeCores = numCPU - coresUsed;
+    double cputil = (static_cast<double>(coresUsed) / numCPU) * 100.0;
+
     for (std::shared_ptr<Process> p : globalScheduler->getFinishedQueue()) {
         finishedPOut << std::left << std::setw(12) << p->getName() <<
             std::setw(30) << p->getDate() <<
             std::setw(12) << "Finished" <<
             p->getCommandIndex() << "/" << p->getLinesOfCode() << std::endl;
     }
-    int freeCores = globalScheduler->getFreeCores();
-    int coresUsed = numCPU - freeCores;
-    int cputil = coresUsed / 0.04;
-    out << "CPU Utilization: " + std::to_string(cputil) + " %" << std::endl;
+
+    out << "CPU Utilization: " << std::fixed << std::setprecision(2) << cputil << " %" << std::endl;
     out << "Cores Used: " + std::to_string(coresUsed) << std::endl;
     out << "Cores Available: " + std::to_string(freeCores) << std::endl << std::endl;
     out << "+-----------------------------------------------------------------------------------------+" << std::endl;
@@ -399,7 +401,7 @@ void marqueeActivity() {
 
 }
 
-void mainTerminal(int offset) {
+void mainTerminal() {
     char ch;
     if (_kbhit())
     {
@@ -413,26 +415,15 @@ void mainTerminal(int offset) {
         else if ((int)ch == 13) {// Enter
             hist_inc = 0;
             std::vector<std::string> cmdTokens = split(command, ' ');
-            if (cmdTokens[0] == "exit")
+            if (cmdTokens[0] == "exit") {
                 exitOS = true;
+                globalScheduler->stopOS();
+            }
             else {
                 cmd_hist.push_back(command);
                 handleInput(cmdTokens);
             }
         }
-		//else if ((int)ch == 72) { // Up Arrow
-  //          if (hist_inc + 1 <= cmd_hist.size())
-  //              (hist_inc)++;
-  //          if (cmd_hist.size() > 0)
-  //              command = cmd_hist[cmd_hist.size() - hist_inc];
-  //      }
-		//else if ((int)ch == 80) { // Down Arrow
-  //          //std::cout << ch << std::endl;
-  //          if (hist_inc - 1 > 0)
-  //              (hist_inc)--;
-  //          if (hist_inc > 1)
-  //              command = cmd_hist[cmd_hist.size() - hist_inc];
-  //      }
 		else if ((int)ch >= 32 && (int)ch <= 126) // Printable characters
             command += ch;
     }
@@ -480,7 +471,7 @@ int main() {
 
         if (activeTerminal == "main") {
             printSlider(offset);
-            mainTerminal(offset);
+            mainTerminal();
 
 		}
 		else if (activeTerminal == "marquee") {
@@ -500,7 +491,7 @@ int main() {
     // near end of main()
     exitOS = true;
     schedulerRunning = false;
-    std::this_thread::sleep_for(std::chrono::milliseconds(600));  // Give time for cleanup if needed
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
     //endwin();
     return 0;

@@ -10,18 +10,11 @@
 
 void Scheduler::fcfs() {
 
-    while (true) {
+    while (!exitOS) {
         //std::unique_lock<std::mutex> lock(mtx);
         //cv.wait(lock, [&]() {   
         //    return freeCores > 0 || !processQueue.empty();
         //    });
-
-        checkCoreFinished();
-
-        if (mode == "rr") 
-			checkRoundRobin();
-        
-        assignNewProcesses();
 
         for (int i = 0; i < totalCores; ++i)
             coreSemaphores[i]->release();
@@ -29,25 +22,48 @@ void Scheduler::fcfs() {
         for (int i = 0; i < totalCores; ++i)
             schedSemaphores[i]->acquire();
 
+        checkCoreFinished();
+
+        if (mode == "rr")
+            checkRoundRobin();
 
         if (cpuCycle % (batchFreq+1) == 0 && makeProcesses.load()) {
-            //if(latestProcessID < numProcesses)
-            generateProcess();
+            //if(latestProcessID < 10)
+                generateProcess();
         }
-        
+
+        assignNewProcesses();
+
+        //if (cpuCycle % 1000 == 0)
+        //    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        cpuCycle++;
+        std::this_thread::sleep_for(std::chrono::microseconds(3));
         //if (latestProcessID == 1) {
         //    for (int i = 0; i < 1; i++) {
 
         //    }
         //}
+        // 
+        //P1=5
+        //P2=5
+        //dpe=1
+        //qc=2
+
+        //5 5 4
+        //    5 5 4
+        //    P
+        //0 1 2 3
+        //X R X R
+        //
+
+
 
         //if (latestProcessID >= numProcesses &&
         //    processQueue.empty() && 
         //    finishedQueue.size() == numProcesses){
         //    break;
         //}
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        cpuCycle++;
+
     }
 }
 
@@ -55,8 +71,9 @@ void Scheduler::checkRoundRobin() {
 	for (int i = 0; i < cores.size(); ++i) {
 		auto core = cores[i];
 		if (core->getProcess() && !core->isIdle()) {
-            if (core->getQuantumCycleCounter() >= quantum_cycle / (execDelay + 1)) {
-                processQueue.push(core->getProcess());
+            if (core->getQuantumCycleCounter() > 0 && core->getQuantumCycleCounter() % quantum_cycle == 0) {
+                std::lock_guard<std::mutex> lock(mtx);
+                processQueue.push(core->getProcess());  
                 ++freeCores;
                 core->setProcessWait();
                 core->assignProcess(nullptr);
@@ -97,8 +114,8 @@ void Scheduler::checkCoreFinished() {
 }
 
 void Scheduler::addProcess(std::string processName) {
-
-	auto newProcess = std::make_shared<Process>(latestProcessID, processName, numCommands, addScreen(processName, latestProcessID, numCommands));
+    uint64_t instructionCount = (minInstructions == maxInstructions) ? minInstructions : getRandomInstructionCount(minInstructions, maxInstructions);
+	auto newProcess = std::make_shared<Process>(latestProcessID, processName, instructionCount, addScreen(processName, latestProcessID, instructionCount));
 	newProcess->generateRandomCommands();
     std::lock_guard<std::mutex> lock(mtx);
 	processQueue.push(newProcess);
@@ -106,10 +123,13 @@ void Scheduler::addProcess(std::string processName) {
 }
 
 void Scheduler::generateProcess() {
-    std::string p_name = "screen_0" + std::to_string(latestProcessID);
-    auto newProcess = std::make_shared<Process>(latestProcessID, p_name, numCommands, addScreen(p_name, latestProcessID, numCommands));
+    uint64_t instructionCount = (minInstructions == maxInstructions) ? minInstructions : getRandomInstructionCount(minInstructions, maxInstructions);
+    std::string p_name = "p_" + std::to_string(latestProcessID);
+    auto newProcess = std::make_shared<Process>(latestProcessID, p_name, instructionCount, addScreen(p_name, latestProcessID, instructionCount));
 
-	newProcess->generateRandomCommands();
+    newProcess->generateRandomCommands();
+    //newProcess->fixedSymbols();
+    //newProcess->fixedCommandSet();
 
     std::lock_guard<std::mutex> lock(mtx);
     processQueue.push(newProcess);
