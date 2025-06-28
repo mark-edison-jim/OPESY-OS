@@ -25,7 +25,7 @@ private:
 
 	int commandIndex = 0;
 	int cpuCoreID = -1;
-	uint16_t totalLines;
+	uint64_t totalLines;
 	std::string creationDate = getTime();
 
 	std::shared_ptr<std::unordered_map<std::string, uint16_t>> symbolTable = std::make_shared<std::unordered_map<std::string, uint16_t>>();
@@ -57,7 +57,7 @@ private:
 
 
 public:
-	Process(int pid, const std::string& name, uint16_t totalLines, std::shared_ptr<Screen> screen)
+	Process(int pid, const std::string& name, uint64_t totalLines, std::shared_ptr<Screen> screen)
 		: pid(pid), name(name), totalLines(totalLines), screenRef(screen){
 	}
 	void generateRandomCommands();

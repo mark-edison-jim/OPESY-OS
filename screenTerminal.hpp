@@ -10,7 +10,7 @@ private:
     std::string name;
     int pid;
     int currentLine = 0;
-    uint16_t totalLines;
+    uint64_t totalLines;
     std::string creationDate;
     std::deque<std::string> logs;
     std::vector<std::string> commandHistory;
@@ -20,7 +20,7 @@ private:
 public:
     Screen() = default;
 
-    Screen(const std::string& name, int pid, uint16_t totalLines) : name(name), pid(pid), totalLines(totalLines) {
+    Screen(const std::string& name, int pid, uint64_t totalLines) : name(name), pid(pid), totalLines(totalLines) {
         creationDate = getTime();
     }
 
@@ -39,7 +39,7 @@ public:
 		return currentLine;
 	}
 
-	int getTotalLines() const {
+	uint64_t getTotalLines() const {
 		return totalLines;
 	}
 

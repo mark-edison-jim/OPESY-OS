@@ -33,4 +33,4 @@ uint64_t getRandomInstructionCount(uint64_t minInstructions, uint64_t maxInstruc
 bool fiftyFiftyChance();
 uint8_t getRandomUint8();
 uint16_t getRandomUint16();
-int getRandomFromRange(int);
+int getRandomFromRange(int, int);

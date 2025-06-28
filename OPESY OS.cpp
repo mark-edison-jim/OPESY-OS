@@ -112,7 +112,9 @@ void screenTerminal() {
                 activeTerminal = "main";
                 hist_inc = 0;
             }
-            else if (command == "process-smi") {
+            else if (command == "clear") {
+				globalScheduler->clearCommandHistory();
+            }else if (command == "process-smi") {
                 std::ostringstream out;
 
 				std::shared_ptr<Screen> screen = globalScheduler->getScreen();
@@ -164,48 +166,6 @@ void screenTerminal() {
     std::cout << activeScr << ":\\> " << command << std::endl << std::endl;
 }
 
-
-std::ostringstream getProcessStats() {
-    std::ostringstream out;
-    std::ostringstream runningPOut;
-    std::ostringstream finishedPOut;
-
-    int coresUsed = 0;
-	std::vector<std::shared_ptr<CoreObject>> cores = globalScheduler->getCoresArray();
-    for (std::shared_ptr<CoreObject> core : cores) {
-        std::shared_ptr<Process> p = core->getProcess();
-        if (p) {
-            coresUsed++;
-            runningPOut << std::left << std::setw(12) << p->getName() <<
-                std::setw(30) << p->getDate() <<
-                std::setw(12) << "Core: " + std::to_string(p->getCpuCoreID()) <<
-                p->getCommandIndex() << "/" << p->getLinesOfCode() << std::endl;
-        }
-    }
-
-    int freeCores = numCPU - coresUsed;
-    double cputil = (static_cast<double>(coresUsed) / numCPU) * 100.0;
-
-    for (std::shared_ptr<Process> p : globalScheduler->getFinishedQueue()) {
-        finishedPOut << std::left << std::setw(12) << p->getName() <<
-            std::setw(30) << p->getDate() <<
-            std::setw(12) << "Finished" <<
-            p->getCommandIndex() << "/" << p->getLinesOfCode() << std::endl;
-    }
-
-    out << "CPU Utilization: " << std::fixed << std::setprecision(2) << cputil << " %" << std::endl;
-    out << "Cores Used: " + std::to_string(coresUsed) << std::endl;
-    out << "Cores Available: " + std::to_string(freeCores) << std::endl << std::endl;
-    out << "+-----------------------------------------------------------------------------------------+" << std::endl;
-    out << "Running Processes:" << std::endl;
-    out << runningPOut.str() << std::endl;
-    out << "Finished Processes:" << std::endl;
-    out << finishedPOut.str() << std::endl;
-    out << "+-----------------------------------------------------------------------------------------+" << std::endl << std::endl;
-
-    return out;
-}
-
 void screenFunc(std::string* action, std::vector<std::string> cmdTokens) {
     //*action = commandMsg("'screen' command recognized. Doing something.");
     if (cmdTokens.size() == 3) {
@@ -244,7 +204,7 @@ void screenFunc(std::string* action, std::vector<std::string> cmdTokens) {
         std::string mode = cmdTokens[1];
         if (mode == "-ls") {
 
-            *action = getProcessStats().str();
+            *action = globalScheduler->getProcessStats().str();
         }
         else {
             *action = commandMsg("Invalid screen command. Use 'screen -s <name>' | 'screen -r <name>' | 'screen -ls'.");
@@ -293,7 +253,7 @@ void reportUtilFunc(std::string* action) {
     std::ofstream MyFile(path);
 
     if (MyFile.is_open()) {
-        MyFile << getProcessStats().str() << std::endl;
+        MyFile << globalScheduler->getProcessStats().str() << std::endl;
     }
     MyFile.close();
 }

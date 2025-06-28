@@ -11,6 +11,8 @@
 #include "CoreObject.hpp"
 #include "screenTerminal.hpp"
 #include <map>
+#include <sstream>
+#include <iomanip>
 
 class Scheduler : public std::enable_shared_from_this<Scheduler> {
 private:
@@ -22,12 +24,13 @@ private:
 	std::vector<std::shared_ptr<std::binary_semaphore>> coreSemaphores;
 	std::vector<std::shared_ptr<std::binary_semaphore>> schedSemaphores;
     std::map<std::string, std::shared_ptr<Screen>> screens;
-    std::mutex mtx;
+    std::mutex processMtx;
+    std::mutex coresMtx;
     std::mutex finishedMtx;
     std::mutex screensMtx;
     std::condition_variable cv;
-	uint16_t minInstructions;
-	uint16_t maxInstructions;
+	uint64_t minInstructions;
+    uint64_t maxInstructions;
     uint32_t batchFreq;
     int currProcIdx = 0;
     //int numCommands;
@@ -43,7 +46,7 @@ private:
     //std::vector<bool> coreBusy;
 
 public:    
-    Scheduler(int availableCores, int numProcesses, uint16_t minIns, uint16_t maxIns, int execDelay, int batchFreq, std::string mode, int quantum)
+    Scheduler(int availableCores, int numProcesses, uint64_t minIns, uint64_t maxIns, int execDelay, int batchFreq, std::string mode, int quantum)
         : minInstructions(minIns), maxInstructions(maxIns), totalCores(availableCores), freeCores(availableCores), numProcesses(numProcesses), execDelay(execDelay), batchFreq(batchFreq), mode(mode), quantum_cycle(quantum){
         if (availableCores <= 0) {
             throw std::invalid_argument("Number of cores must be greater than zero.");
@@ -80,7 +83,8 @@ public:
         return freeCores;
     }
 
-    const std::vector<std::shared_ptr<CoreObject>> getCoresArray() const {
+    const std::vector<std::shared_ptr<CoreObject>> getCoresArray() {
+		std::lock_guard<std::mutex> coresLock(coresMtx);
         return cores;
     }
 
@@ -129,6 +133,48 @@ public:
         }
     }
 
+    std::ostringstream getProcessStats() {
+        std::lock_guard<std::mutex> finishedLock(finishedMtx);
+        std::lock_guard<std::mutex> coresLock(coresMtx);
+
+        std::ostringstream out;
+        std::ostringstream runningPOut;
+        std::ostringstream finishedPOut;
+
+        int coresUsed = 0;
+        for (std::shared_ptr<CoreObject> core : cores) {
+            std::shared_ptr<Process> p = core->getProcess();
+            if (p) {
+                coresUsed++;
+                runningPOut << std::left << std::setw(12) << p->getName() <<
+                    std::setw(30) << p->getDate() <<
+                    std::setw(12) << "Core: " + std::to_string(p->getCpuCoreID()) <<
+                    p->getCommandIndex() << "/" << p->getLinesOfCode() << std::endl;
+            }
+        }
+
+        int freeCores = totalCores - coresUsed;
+        double cputil = (static_cast<double>(coresUsed) / totalCores) * 100.0;
+
+        for (std::shared_ptr<Process> p : finishedQueue) {
+            finishedPOut << std::left << std::setw(12) << p->getName() <<
+                std::setw(30) << p->getDate() <<
+                std::setw(12) << "Finished" <<
+                p->getCommandIndex() << "/" << p->getLinesOfCode() << std::endl;
+        }
+
+        out << "CPU Utilization: " << std::fixed << std::setprecision(2) << cputil << " %" << std::endl;
+        out << "Cores Used: " + std::to_string(coresUsed) << std::endl;
+        out << "Cores Available: " + std::to_string(freeCores) << std::endl << std::endl;
+        out << "+-----------------------------------------------------------------------------------------+" << std::endl;
+        out << "Running Processes:" << std::endl;
+        out << runningPOut.str() << std::endl;
+        out << "Finished Processes:" << std::endl;
+        out << finishedPOut.str() << std::endl;
+        out << "+-----------------------------------------------------------------------------------------+" << std::endl << std::endl;
+
+        return out;
+    }
 
     void setActiveScreen(std::string screenName) {
         activeScreen = screenName;
@@ -139,7 +185,7 @@ public:
         return screens.find(name) != screens.end();
     }
 
-    std::shared_ptr<Screen> addScreen(const std::string& name, int pid, uint16_t totalLines) {
+    std::shared_ptr<Screen> addScreen(const std::string& name, int pid, uint64_t totalLines) {
         std::lock_guard<std::mutex> screensLock(screensMtx);
         auto screen = std::make_shared<Screen>(name, pid, totalLines);
         screens[name] = screen;
@@ -150,5 +196,10 @@ public:
         std::lock_guard<std::mutex> screensLock(screensMtx);
         screens[activeScreen]->addCommand(command, output);
     }
+
+	void clearCommandHistory() {
+		std::lock_guard<std::mutex> screensLock(screensMtx);
+		screens[activeScreen]->clearHistory();
+	}
 
 };

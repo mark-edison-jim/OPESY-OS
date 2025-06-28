@@ -57,7 +57,7 @@ void Process::commandSwitchCase(ICommand::CommandType type, int remainingIns, in
 		break;
 	}
 	case ICommand::FOR: {
-		handleForInstruction(getRandomFromRange(remainingIns), depth);
+		handleForInstruction(getRandomFromRange(0, remainingIns), depth);
 		break;
 	}
 	default:
@@ -66,25 +66,24 @@ void Process::commandSwitchCase(ICommand::CommandType type, int remainingIns, in
 }
 
 void Process::fixedSymbols() {
-	std::vector<std::string> varNames{ "x", "y", "z" };
-	for (int i = 0; i < 3; i++) {
-
+	std::vector<std::string> varNames{ "x" };
+	for (int i = 0; i < varNames.size(); i++) {
 		symbolTable->insert({ varNames[i], 0 });
 	}
 }
 
 void Process::fixedCommandSet() {
-	std::vector<std::string> varNames{ "x", "y", "z" };
-	for (int i = 0; i < 100; i++) {
-		for (int j = 0; j < 3; j++) {
-			auto add = std::make_unique<AddCommand>(pid, symbolTable, false);
-			add->setExplicit(varNames[j], varNames[j], 0, "", 1);
-			commandList.push_back(std::move(add));
-
+	std::vector<std::string> varNames{ "x" };
+	for (int i = 0; i < totalLines; i++) {
+		for (int j = 0; j < varNames.size(); j++) {
 			std::string text = "";
 			auto print = std::make_unique<PrintCommand>(pid, text, symbolTable, false);
 			print->setExplicit(varNames[j]);
 			commandList.push_back(std::move(print));
+
+			auto add = std::make_unique<AddCommand>(pid, symbolTable, false);
+			add->setExplicit(varNames[j], varNames[j], 0, "", getRandomFromRange(1, 10));
+			commandList.push_back(std::move(add));
 		}
 	}
 }
@@ -93,7 +92,7 @@ void Process::generateRandomCommands() {
 	while (commandList.size() < totalLines) {
 		int remainingIns = totalLines - commandList.size();
 		if (remainingIns <= 0) break;
-		ICommand::CommandType type = static_cast<ICommand::CommandType>(getRandomFromRange(6));
+		ICommand::CommandType type = static_cast<ICommand::CommandType>(getRandomFromRange(0, 6));
 		commandSwitchCase(type, remainingIns, 3);
 	}	
 }
@@ -103,7 +102,7 @@ void Process::handleForInstruction(int loops, int depth) {
 	for (int i = 0; i < loops; ++i) {
 		int remainingIns = totalLines - commandList.size();
 		if (remainingIns <= 0) break;
-		ICommand::CommandType type = static_cast<ICommand::CommandType>(getRandomFromRange(6));
+		ICommand::CommandType type = static_cast<ICommand::CommandType>(getRandomFromRange(0, 6));
 		commandSwitchCase(type, remainingIns, depth-1);
 	}
 }
@@ -117,11 +116,12 @@ void Process::runCommand(){
 	commandList[commandIndex]->execute(cpuCoreID);
 
 	//std::lock_guard<std::mutex> logLock(*logsMtx);
-	//if(logs.size() == 5)
-		//logs.pop_front();
+
 
 	if(commandList[commandIndex]->getCommandType() == ICommand::PRINT){
 		std::string output = "(" + getTime() + ")  Core:" + std::to_string(cpuCoreID) + " \"" + commandList[commandIndex]->getLog() + "\"";
+		if(logs.size() == 10)
+			logs.pop_front();
 		logs.push_back(output);
 		screenRef->update(logs, commandIndex+1);
 		//screenRef->addCommand("", commandList[commandIndex]->getLog());
@@ -140,8 +140,6 @@ void Process::runCommand(){
 	if (commandIndex >= totalLines) {
 		setFinished();
 		screenRef->finish(logs);
-		//if(coreID == 2)
-		//break;
 	}
 }
 
