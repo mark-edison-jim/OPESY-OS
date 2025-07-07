@@ -145,6 +145,7 @@
     <ClCompile Include="Figlet.cc" />
     <ClCompile Include="Figlet_Font_standard.cc" />
     <ClCompile Include="ICommand.cpp" />
+    <ClCompile Include="MemoryAllocator.cpp" />
     <ClCompile Include="OPESY OS.cpp" />
     <ClCompile Include="PrintCommand.cpp" />
     <ClCompile Include="Process.cpp" />
@@ -161,6 +162,7 @@
     <ClInclude Include="DeclareCommand.hpp" />
     <ClInclude Include="Figlet.hh" />
     <ClInclude Include="ICommand.hpp" />
+    <ClInclude Include="MemoryAllocator.hpp" />
     <ClInclude Include="PrintCommand.hpp" />
     <ClInclude Include="Process.hpp" />
     <ClInclude Include="Scheduler.hpp" />

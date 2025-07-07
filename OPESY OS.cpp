@@ -45,7 +45,9 @@ int batchFreq = 0;
 uint64_t minInstructions = 0;
 uint64_t maxInstructions = 0;
 int delayPerExec = 0;
-
+size_t totalMemory = 0;
+size_t memPerBlock = 0;
+size_t memPerProcess = 0;
 
 void initializeFunc(std::string* action) {
     *action = commandMsg("'initialize' command recognized. Doing something.");
@@ -80,11 +82,20 @@ void initializeFunc(std::string* action) {
         else if (key == "delay-per-exec") {
             iss >> delayPerExec;
         }
+        else if (key == "max-overall-mem") {
+            iss >> totalMemory;
+        }
+        else if (key == "mem-per-frame") {
+            iss >> memPerBlock;
+        }
+        else if (key == "mem-per-proc") {
+            iss >> memPerProcess;
+        }
     }
 
 	config.close();
     
-    globalScheduler = std::make_shared<Scheduler>(numCPU, 10, minInstructions, maxInstructions, delayPerExec, batchFreq, scheduler, quantumCycles);
+    globalScheduler = std::make_shared<Scheduler>(numCPU, 10, minInstructions, maxInstructions, delayPerExec, batchFreq, scheduler, quantumCycles, totalMemory, memPerBlock, memPerProcess);
     std::thread schedulerThread([scheduler = globalScheduler]() {
         globalScheduler->fcfs();
         });

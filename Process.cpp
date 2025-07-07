@@ -53,7 +53,7 @@ void Process::commandSwitchCase(ICommand::CommandType type, int remainingIns, in
 		break;
 	}
 	case ICommand::SLEEP: {
-		commandList.push_back(std::make_unique<SleepCommand>(pid, symbolTable, false));
+		commandList.push_back(std::make_unique<AddCommand>(pid, symbolTable, false));
 		break;
 	}
 	case ICommand::FOR: {
@@ -115,9 +115,6 @@ void Process::beginProcess(int coreID) {
 void Process::runCommand(){
 	commandList[commandIndex]->execute(cpuCoreID);
 
-	//std::lock_guard<std::mutex> logLock(*logsMtx);
-
-
 	if(commandList[commandIndex]->getCommandType() == ICommand::PRINT){
 		std::string output = "(" + getTime() + ")  Core:" + std::to_string(cpuCoreID) + " \"" + commandList[commandIndex]->getLog() + "\"";
 		if(logs.size() == 10)
@@ -136,7 +133,7 @@ void Process::runCommand(){
 		moveToNextLine();
 	}
 
-
+		
 	if (commandIndex >= totalLines) {
 		setFinished();
 		screenRef->finish(logs);
@@ -144,7 +141,7 @@ void Process::runCommand(){
 }
 
 
-int Process::getCommandIndex() const
+uint64_t Process::getCommandIndex() const
 {
 	return commandIndex;
 }

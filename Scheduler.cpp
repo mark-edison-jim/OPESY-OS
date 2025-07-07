@@ -11,12 +11,6 @@
 void Scheduler::fcfs() {
 
     while (!exitOS) {
-        //std::unique_lock<std::mutex> lock(mtx);
-        //cv.wait(lock, [&]() {   
-        //    return freeCores > 0 || !processQueue.empty();
-        //    });
-
-        //checkCoreFinished();
 
         for (int i = 0; i < totalCores; ++i)
             coreSemaphores[i]->release();
@@ -24,68 +18,72 @@ void Scheduler::fcfs() {
         for (int i = 0; i < totalCores; ++i)
             schedSemaphores[i]->acquire();
 
+
         checkCoreFinished();
-        
+
         if (mode == "rr")
             checkRoundRobin();
 
         if (cpuCycle % (batchFreq+1) == 0 && makeProcesses.load()) {
-            //if(latestProcessID < 10)
-            generateProcess();
+            if(latestProcessID < 11)
+                generateProcess();
         }
-
         assignNewProcesses();
 
-        
+        //if(cpuCycle % 100 == 0)
+            std::this_thread::sleep_for(std::chrono::microseconds(10));
         cpuCycle++;
-
     }
 }
 
 void Scheduler::checkRoundRobin() {
+    std::lock_guard<std::mutex> processLock(processMtx);
+    std::lock_guard<std::mutex> coresLock(coresMtx);
 	for (int i = 0; i < cores.size(); ++i) {
 		auto core = cores[i];
 		if (core->getProcess() && !core->isIdle()) {
             if (core->getQuantumCycleCounter() > 0 && core->getQuantumCycleCounter() % quantum_cycle == 0) {
-                std::lock_guard<std::mutex> processLock(processMtx);
-                std::lock_guard<std::mutex> coresLock(coresMtx);
-                processQueue.push(core->getProcess());  
+                memAcc.printStats(core->getQuantumCycleCounter(), memPerProcess);
+                processQueue.push(core->getProcess());
                 ++freeCores;
                 core->setProcessWait();
                 core->assignProcess(nullptr);
-                core->resetQuantumCounter();
+                //core->resetQuantumCounter();screen -ls
             }
 		}
 	}
 }
 
-
 void Scheduler::assignNewProcesses() {
+    std::lock_guard<std::mutex> processLock(processMtx);
+    std::lock_guard<std::mutex> coresLock(coresMtx);
 	for (int i = 0; i < cores.size(); ++i) {
 		auto core = cores[i];
-		if (core->isIdle() && !processQueue.empty()) {
-            std::lock_guard<std::mutex> processLock(processMtx);
-            std::lock_guard<std::mutex> coresLock(coresMtx);
+        if (core->isIdle() && !processQueue.empty()) {
             std::shared_ptr<Process> nextProc = processQueue.front();
             processQueue.pop();
-            if (freeCores.load() > 0)
-                --freeCores;
-            core->resetQuantumCounter();
-            core->assignProcess(nextProc);
-            core->initializeProcess();
+            if (memAcc.checkProcInMemory(nextProc->getName()) || memAcc.allocateMemory(nextProc->getName(), memPerProcess)) {
+                if (freeCores.load() > 0)
+                    --freeCores;
+                //core->resetQuantumCounter();
+                core->assignProcess(nextProc);
+                core->initializeProcess();
+            }else
+                processQueue.push(nextProc); 
 		}
 	}
 }
 
 void Scheduler::checkCoreFinished() {
+    std::lock_guard<std::mutex> finishedLock(finishedMtx);
+    std::lock_guard<std::mutex> coresLock(coresMtx);
     for (int i = 0; i < cores.size(); ++i) {
         auto core = cores[i];
         if (core->getProcess() && core->isIdle()) {
-            std::lock_guard<std::mutex> finishedLock(finishedMtx);
-            std::lock_guard<std::mutex> coresLock(coresMtx);
             finishedQueue.push_back(core->getProcess());
             if(activeScreen == "")
                 deleteScreen(core->getProcess()->getName());
+            memAcc.deallocateMemory(core->getProcess()->getName(), memPerProcess);
             ++freeCores;
             core->assignProcess(nullptr);
             //cv.notify_one();
@@ -95,11 +93,11 @@ void Scheduler::checkCoreFinished() {
 
 void Scheduler::addProcess(std::string processName) {
     uint64_t instructionCount = (minInstructions == maxInstructions) ? minInstructions : getRandomInstructionCount(minInstructions, maxInstructions);
-	auto newProcess = std::make_shared<Process>(latestProcessID, processName, instructionCount, addScreen(processName, latestProcessID, instructionCount));
-	//newProcess->generateRandomCommands();
+	auto newProcess = std::make_shared<Process>(latestProcessID, processName, instructionCount, addScreen(processName, latestProcessID, instructionCount), memPerProcess);
+	newProcess->generateRandomCommands();
 
-    newProcess->fixedSymbols();
-    newProcess->fixedCommandSet();
+    //newProcess->fixedSymbols();
+    //newProcess->fixedCommandSet();
 
     std::lock_guard<std::mutex> processLock(processMtx);
 	processQueue.push(newProcess);
@@ -109,7 +107,7 @@ void Scheduler::addProcess(std::string processName) {
 void Scheduler::generateProcess() {
     uint64_t instructionCount = (minInstructions == maxInstructions) ? minInstructions : getRandomInstructionCount(minInstructions, maxInstructions);
     std::string p_name = "p_" + std::to_string(latestProcessID);
-    auto newProcess = std::make_shared<Process>(latestProcessID, p_name, instructionCount, addScreen(p_name, latestProcessID, instructionCount));
+    auto newProcess = std::make_shared<Process>(latestProcessID, p_name, instructionCount, addScreen(p_name, latestProcessID, instructionCount), memPerProcess);
 
     newProcess->generateRandomCommands();
     //newProcess->fixedSymbols();

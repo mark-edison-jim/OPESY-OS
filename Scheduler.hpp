@@ -13,6 +13,8 @@
 #include <map>
 #include <sstream>
 #include <iomanip>
+#include "MemoryAllocator.hpp"
+
 
 class Scheduler : public std::enable_shared_from_this<Scheduler> {
 private:
@@ -43,15 +45,19 @@ private:
     std::string mode;
     int quantum_cycle;
 	bool exitOS = false;
+    size_t totalMemory;
+    size_t memPerBlock;
+    size_t memPerProcess;
+    MemoryAllocator memAcc;
     //std::vector<bool> coreBusy;
 
 public:    
-    Scheduler(int availableCores, int numProcesses, uint64_t minIns, uint64_t maxIns, int execDelay, int batchFreq, std::string mode, int quantum)
-        : minInstructions(minIns), maxInstructions(maxIns), totalCores(availableCores), freeCores(availableCores), numProcesses(numProcesses), execDelay(execDelay), batchFreq(batchFreq), mode(mode), quantum_cycle(quantum){
+    Scheduler(int availableCores, int numProcesses, uint64_t minIns, uint64_t maxIns, int execDelay, int batchFreq, std::string mode, int quantum, size_t totalMemory, size_t memPerBlock, size_t memPerProcess)
+        : minInstructions(minIns), maxInstructions(maxIns), totalCores(availableCores), freeCores(availableCores), numProcesses(numProcesses), execDelay(execDelay), batchFreq(batchFreq), 
+        mode(mode), quantum_cycle(quantum), totalMemory(totalMemory), memPerBlock(memPerBlock), memAcc(MemoryAllocator(totalMemory, memPerBlock)), memPerProcess(memPerProcess) {
         if (availableCores <= 0) {
             throw std::invalid_argument("Number of cores must be greater than zero.");
         }   
-
 
         for (int i = 0; i < totalCores; ++i) {
 			coreSemaphores.push_back(std::make_shared<std::binary_semaphore>(0));
@@ -94,7 +100,6 @@ public:
     void checkCoreFinished();
     //bool getNextProcess(std::shared_ptr<Process>& out);
     void addProcess(std::string processName);
-    void generateFixedProcesses();
     void generateProcess();
 
     void makeProcess() {

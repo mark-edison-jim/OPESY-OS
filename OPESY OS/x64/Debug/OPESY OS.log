@@ -1,2 +1,8 @@
 ﻿  Scheduler.cpp
+C:\Users\admin\Desktop\Mark\Mark's Work\College\3rd Year 3rd Term\CSOPESY\MCO\OPESY OS\MemoryAllocator.hpp(48,10): warning C4267: 'return': conversion from 'size_t' to 'int', possible loss of data
+  (compiling source file 'Scheduler.cpp')
+  
+C:\Users\admin\Desktop\Mark\Mark's Work\College\3rd Year 3rd Term\CSOPESY\MCO\OPESY OS\MemoryAllocator.hpp(52,10): warning C4267: 'return': conversion from 'size_t' to 'int', possible loss of data
+  (compiling source file 'Scheduler.cpp')
+  
   OPESY OS.vcxproj -> C:\Users\admin\Desktop\Mark\Mark's Work\College\3rd Year 3rd Term\CSOPESY\MCO\OPESY OS\x64\Debug\OPESY OS.exe

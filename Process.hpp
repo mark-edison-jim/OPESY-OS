@@ -23,7 +23,10 @@ private:
 
 	std::shared_ptr<Screen> screenRef;
 
-	int commandIndex = 0;
+	size_t memorySize;
+
+	uint64_t commandIndex = 0;
+
 	int cpuCoreID = -1;
 	uint64_t totalLines;
 	std::string creationDate = getTime();
@@ -57,14 +60,14 @@ private:
 
 
 public:
-	Process(int pid, const std::string& name, uint64_t totalLines, std::shared_ptr<Screen> screen)
-		: pid(pid), name(name), totalLines(totalLines), screenRef(screen){
+	Process(int pid, const std::string& name, uint64_t totalLines, std::shared_ptr<Screen> screen, size_t memorySize)
+		: pid(pid), name(name), totalLines(totalLines), screenRef(screen), memorySize(memorySize){
 	}
 	void generateRandomCommands();
 	void runCommand();
 	void beginProcess(int);
 	void moveToNextLine();
-	int getCommandIndex() const;
+	uint64_t getCommandIndex() const;
 	int getLinesOfCode() const;
 	int getPID() const;
 	int getCpuCoreID() const;
@@ -80,6 +83,11 @@ public:
 		//std::lock_guard<std::mutex> logLock(mtx);
 		return logs;
 	}
+
+	size_t getMemorySize() {
+		return memorySize;
+	}
+
 	void commandSwitchCase(ICommand::CommandType, int, int);
 	void fixedCommandSet();
 	void fixedSymbols();

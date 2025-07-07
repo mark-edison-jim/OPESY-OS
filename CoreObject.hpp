@@ -15,7 +15,7 @@ private:
     std::shared_ptr<std::binary_semaphore> coreSemaphore{0};
     std::shared_ptr<std::binary_semaphore> schedSemaphore{0};
     std::atomic<int> quantumCycleCounter = 0;
-
+    std::mutex processMutex;
     //std::shared_ptr<Scheduler> scheduler;
 
 public:
@@ -70,6 +70,7 @@ public:
     }
 
     std::shared_ptr<Process> getProcess() {
-		return process;
-    };
+        std::lock_guard<std::mutex> lock(processMutex);
+        return process;
+    }
 };
