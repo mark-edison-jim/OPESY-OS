@@ -53,7 +53,7 @@ void Process::commandSwitchCase(ICommand::CommandType type, int remainingIns, in
 		break;
 	}
 	case ICommand::SLEEP: {
-		commandList.push_back(std::make_unique<AddCommand>(pid, symbolTable, false));
+		commandList.push_back(std::make_unique<SleepCommand>(pid, symbolTable, false));
 		break;
 	}
 	case ICommand::FOR: {

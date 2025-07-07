@@ -24,14 +24,14 @@ void Scheduler::fcfs() {
         if (mode == "rr")
             checkRoundRobin();
 
-        if (cpuCycle % (batchFreq+1) == 0 && makeProcesses.load()) {
-            if(latestProcessID < 11)
+        if (cpuCycle > 0 && cpuCycle % (batchFreq + 1) == 0 && makeProcesses.load()) {
+            if(latestProcessID < 21)
                 generateProcess();
         }
         assignNewProcesses();
 
         //if(cpuCycle % 100 == 0)
-            std::this_thread::sleep_for(std::chrono::microseconds(10));
+            //std::this_thread::sleep_for(std::chrono::microseconds(100));
         cpuCycle++;
     }
 }
@@ -43,7 +43,7 @@ void Scheduler::checkRoundRobin() {
 		auto core = cores[i];
 		if (core->getProcess() && !core->isIdle()) {
             if (core->getQuantumCycleCounter() > 0 && core->getQuantumCycleCounter() % quantum_cycle == 0) {
-                memAcc.printStats(core->getQuantumCycleCounter(), memPerProcess);
+                //memAcc.printStats(cpuCycle, memPerProcess);
                 processQueue.push(core->getProcess());
                 ++freeCores;
                 core->setProcessWait();
@@ -63,9 +63,10 @@ void Scheduler::assignNewProcesses() {
             std::shared_ptr<Process> nextProc = processQueue.front();
             processQueue.pop();
             if (memAcc.checkProcInMemory(nextProc->getName()) || memAcc.allocateMemory(nextProc->getName(), memPerProcess)) {
+                //memAcc.printStats(cpuCycle, memPerProcess);
                 if (freeCores.load() > 0)
                     --freeCores;
-                //core->resetQuantumCounter();
+                core->resetQuantumCounter();
                 core->assignProcess(nextProc);
                 core->initializeProcess();
             }else
@@ -79,11 +80,13 @@ void Scheduler::checkCoreFinished() {
     std::lock_guard<std::mutex> coresLock(coresMtx);
     for (int i = 0; i < cores.size(); ++i) {
         auto core = cores[i];
-        if (core->getProcess() && core->isIdle()) {
-            finishedQueue.push_back(core->getProcess());
+        auto proc = core->getProcess();
+        if (proc && core->isIdle()) {
+            finishedQueue.push_back(proc);
             if(activeScreen == "")
-                deleteScreen(core->getProcess()->getName());
-            memAcc.deallocateMemory(core->getProcess()->getName(), memPerProcess);
+                deleteScreen(proc->getName());
+            //memAcc.printStats(cpuCycle, memPerProcess);
+            memAcc.deallocateMemory(proc->getName(), memPerProcess);
             ++freeCores;
             core->assignProcess(nullptr);
             //cv.notify_one();
