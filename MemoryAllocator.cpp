@@ -46,10 +46,9 @@ void MemoryAllocator::printStats(int qc, size_t sizePerProc){
 	MyFile.close();
 }
 
-bool MemoryAllocator::allocateMemory(std::string processID, size_t size) {
-	if (size == 0 || size > totalMemorySize - usedMemorySize) {
+bool MemoryAllocator::allocateMemory(std::string processID, size_t size, int step) {
+	if (size == 0 || size > totalMemorySize - usedMemorySize)
 		return false;
-	}
 
 	// Compute required blocks
 	size_t sizeInBlocks = (size + sizePerBlock - 1) / sizePerBlock;
@@ -67,7 +66,7 @@ bool MemoryAllocator::allocateMemory(std::string processID, size_t size) {
 			// Compute leftover inside last block
 			size_t leftover = (size % sizePerBlock == 0) ? 0 : (sizePerBlock - (size % sizePerBlock));
 			fragmentations[processID] = std::make_pair(i, leftover);
-
+			printStats(step, size);
 			return true;
 		}
 	}
@@ -76,12 +75,12 @@ bool MemoryAllocator::allocateMemory(std::string processID, size_t size) {
 }
 
 
-void MemoryAllocator::deallocateMemory(std::string processID, size_t size) {
+void MemoryAllocator::deallocateMemory(std::string processID, size_t size, int step) {
 	auto it = fragmentations.find(processID);
 	if (it == fragmentations.end()) {
 		return;
 	}
-
+	printStats(step, size);
 	size_t startIndex = it->second.first;
 	size_t leftover = it->second.second;
 

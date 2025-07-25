@@ -40,8 +40,8 @@ public:
 	}
 
 	void printStats(int qc, size_t sizePerProc);
-	bool allocateMemory(const std::string processID, size_t size);
-	void deallocateMemory(const std::string processID, size_t size);
+	bool allocateMemory(const std::string processID, size_t size, int step);
+	void deallocateMemory(const std::string processID, size_t size, int step);
 	bool checkProcInMemory(const std::string processID);
 
 	int getUsedMemory() const {
