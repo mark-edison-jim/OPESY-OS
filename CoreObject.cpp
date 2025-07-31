@@ -9,6 +9,7 @@ void CoreObject::run() {
         std::lock_guard<std::mutex> lock(processMutex);
         if (process && coreCycle > 0 && coreCycle % (delay+1) == 0) {
             process->runCommand();
+            activeCoreCycle++;
             //coreCycle = 1;
         }
 		if (process && process->getState() == 3)

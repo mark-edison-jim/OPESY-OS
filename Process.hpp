@@ -12,18 +12,17 @@
 #include <mutex>
 #include "screenTerminal.hpp"
 #include <unordered_map>
+#include "MemoryAllocator.hpp"
 
 class Process {
 private:
 	int pid;
 	std::string name;
 	std::vector<std::unique_ptr<ICommand>> commandList;
-	//std::shared_ptr<std::mutex> logsMtx;
+
 	std::deque<std::string> logs;
 
 	std::shared_ptr<Screen> screenRef;
-
-	size_t memorySize;
 
 	uint64_t commandIndex = 0;
 
@@ -31,14 +30,16 @@ private:
 	uint64_t totalLines;
 	std::string creationDate = getTime();
 
-	std::shared_ptr<std::unordered_map<std::string, uint16_t>> symbolTable = std::make_shared<std::unordered_map<std::string, uint16_t>>();
+	std::unordered_map<std::string, std::string> symbolTable = std::unordered_map < std::string, std::string >();
 
-	//struct RequirementFlags {
-	//	bool requireFiles;
-	//	int numFiles;
-	//	bool requireMemory;
-	//	int memoryRequired;
-	//};
+	uint16_t pageSize;
+	uint16_t memorySize;
+
+	int numPages;
+	std::vector<int> pageToFrame;
+
+	std::string currentAddress = "0x0000";
+	std::shared_ptr<MemoryAllocator> memAccRef;
 
 	enum ProcessState {
 		READY,
@@ -46,6 +47,7 @@ private:
 		WAITING,
 		FINISHED
 	};
+
 	std::atomic<ProcessState> state = READY;
 
 	//Process(int pid, std::string name, RequirementFlags requirements);
@@ -56,12 +58,12 @@ private:
 	//bool isFinished() const;
 	//int getRemainingTime() const;
 
-
-
-
 public:
-	Process(int pid, const std::string& name, uint64_t totalLines, std::shared_ptr<Screen> screen, size_t memorySize)
-		: pid(pid), name(name), totalLines(totalLines), screenRef(screen), memorySize(memorySize){
+	Process(int pid, const std::string& name, uint64_t totalLines, std::shared_ptr<Screen> screen, uint16_t memorySize, uint16_t sizePerPage, std::shared_ptr<MemoryAllocator> memAcc)
+		: pid(pid), name(name), totalLines(totalLines), screenRef(screen), memorySize(memorySize), pageSize(sizePerPage), memAccRef(memAcc) {
+		numPages = static_cast<int>(memorySize / sizePerPage);
+		pageToFrame.resize(numPages, -1);
+		memAccRef->createInitialBSPages(numPages, pid);
 	}
 	void generateRandomCommands();
 	void runCommand();
@@ -83,9 +85,40 @@ public:
 		//std::lock_guard<std::mutex> logLock(mtx);
 		return logs;
 	}
+	void loadToPhysMem(std::string, uint16_t);
+	int checkAccessPhysMem(int pageNumber);
+	uint16_t getFromPhysMem(std::string varName);
+
+	void deallocateMemory() {
+		symbolTable.clear();
+		memAccRef->removeFrames(pageToFrame);
+		//memAccRef->removeFromBS(pid);
+	}
+
+	std::string incrementHexString(const std::string& hexStr) {
+		std::string hexNum = hexStr.substr(2);                // Remove "0x"
+		unsigned int num = std::stoul(hexNum, nullptr, 16);  
+		num+=2;                                               
+		std::stringstream ss;
+		ss << "0x" << std::uppercase << std::setfill('0')
+			<< std::setw(4) << std::hex << num;                // Format as 0xXXXX
+		return ss.str();
+	}
 
 	size_t getMemorySize() {
 		return memorySize;
+	}
+
+	auto getSymbolTable() {
+		return symbolTable;
+	}
+
+	int getSymbolTableSize() {
+		return symbolTable.size();
+	}
+
+	bool checkForSTSpace() {
+		return symbolTable.size() < 32;
 	}
 
 	void commandSwitchCase(ICommand::CommandType, int, int);

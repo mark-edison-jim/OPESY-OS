@@ -31,7 +31,7 @@ public:
         return processFinished;
     }
 
-	int getPid() const {
+    size_t getPid() const {
 		return pid;
 	}
 

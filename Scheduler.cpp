@@ -25,8 +25,8 @@ void Scheduler::fcfs() {
             checkRoundRobin();
 
         if (cpuCycle > 0 && cpuCycle % (batchFreq + 1) == 0 && makeProcesses.load()) {
-            //if(latestProcessID < 21)
-            generateProcess();
+            if(latestProcessID < 4)
+                generateProcess();
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
         }
@@ -34,7 +34,7 @@ void Scheduler::fcfs() {
 
         //if(cpuCycle > 0 && cpuCycle % quantum_cycle == 0)
         //    memAcc.printStats(cpuCycle, memPerProcess);
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        //std::this_thread::sleep_for(std::chrono::milliseconds(1));
 
         //if(cpuCycle % 100 == 0)
         cpuCycle++;
@@ -67,14 +67,14 @@ void Scheduler::assignNewProcesses() {
         if (core->isIdle() && !processQueue.empty()) {
             std::shared_ptr<Process> nextProc = processQueue.front();
             processQueue.pop();
-            if (memAcc.checkProcInMemory(nextProc->getName()) || memAcc.allocateMemory(nextProc->getName(), memPerProcess, cpuCycle)) {
-                if (freeCores.load() > 0)
-                    --freeCores;
-                core->resetQuantumCounter();
-                core->assignProcess(nextProc);
-                core->initializeProcess();
-            }else
-                processQueue.push(nextProc);
+            //if (memAcc.checkProcInMemory(nextProc->getName()) || memAcc.allocateMemory(nextProc->getName(), memPerProcess, cpuCycle)) {
+            if (freeCores.load() > 0)
+                --freeCores;
+            core->resetQuantumCounter();
+            core->assignProcess(nextProc);
+            core->initializeProcess();
+            //}else
+            //    processQueue.push(nextProc);
 		}
 	}
 }
@@ -89,7 +89,8 @@ void Scheduler::checkCoreFinished() {
             finishedQueue.push_back(proc);
             if(activeScreen == "")
                 deleteScreen(proc->getName());
-            memAcc.deallocateMemory(proc->getName(), memPerProcess, cpuCycle);
+            //memAcc.deallocateMemory(proc->getName(), memPerProcess, cpuCycle);
+            core->flushProcessMemory();
             ++freeCores;
             core->assignProcess(nullptr);
             //cv.notify_one();
@@ -97,9 +98,9 @@ void Scheduler::checkCoreFinished() {
     }   
 }
 
-void Scheduler::addProcess(std::string processName) {
+void Scheduler::addProcess(std::string processName, uint16_t memPerProcess) {
     uint64_t instructionCount = (minInstructions == maxInstructions) ? minInstructions : getRandomInstructionCount(minInstructions, maxInstructions);
-	auto newProcess = std::make_shared<Process>(latestProcessID, processName, instructionCount, addScreen(processName, latestProcessID, instructionCount), memPerProcess);
+	auto newProcess = std::make_shared<Process>(latestProcessID, processName, instructionCount, addScreen(processName, latestProcessID, instructionCount), memPerProcess, memPerBlock, memAcc);
 	newProcess->generateRandomCommands();
 
     //newProcess->fixedSymbols();
@@ -112,12 +113,14 @@ void Scheduler::addProcess(std::string processName) {
 
 void Scheduler::generateProcess() {
     uint64_t instructionCount = (minInstructions == maxInstructions) ? minInstructions : getRandomInstructionCount(minInstructions, maxInstructions);
-    std::string p_name = "p_" + std::to_string(latestProcessID);
-    auto newProcess = std::make_shared<Process>(latestProcessID, p_name, instructionCount, addScreen(p_name, latestProcessID, instructionCount), memPerProcess);
+    uint16_t memPerProcess = (minMemPerProcess == maxMemPerBlock) ? minMemPerProcess : getRandomMemory(minMemPerProcess, maxMemPerBlock);
 
+    std::string p_name = "p_" + std::to_string(latestProcessID);
+    auto newProcess = std::make_shared<Process>(latestProcessID, p_name, 20, addScreen(p_name, latestProcessID, instructionCount), memPerProcess, memPerBlock, memAcc);
+    
     newProcess->generateRandomCommands();
-    //newProcess->fixedSymbols();
     //newProcess->fixedCommandSet();
+    //newProcess->fixedSymbols();
 
     std::lock_guard<std::mutex> processLock(processMtx);
     processQueue.push(newProcess);

@@ -4,6 +4,9 @@
 #include <unordered_map>
 #include <memory>
 #include <utility>
+//#include "Process.hpp"
+
+class Process;
 
 class ICommand {
 public:
@@ -16,7 +19,7 @@ public:
 		FOR
 	};
 
-	ICommand(CommandType type, int pid, std::shared_ptr<std::unordered_map<std::string, uint16_t>> symbolTable) : cmdType(type), pid(pid), symbolTable(symbolTable) {}
+	ICommand(CommandType type, int pid, Process* processRef) : cmdType(type), pid(pid), processRef(processRef) {}
 
 	CommandType getCommandType() const {
 		return cmdType;
@@ -30,7 +33,7 @@ protected:
 	int pid;
 	CommandType cmdType;
 	std::string logText;
-	std::shared_ptr<std::unordered_map<std::string, uint16_t>> symbolTable;
+	Process* processRef;
 
 	virtual std::pair<uint16_t, uint16_t> getVariable() = 0;
 

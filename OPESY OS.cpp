@@ -45,9 +45,10 @@ int batchFreq = 0;
 uint64_t minInstructions = 0;
 uint64_t maxInstructions = 0;
 int delayPerExec = 0;
-size_t totalMemory = 0;
-size_t memPerBlock = 0;
-size_t memPerProcess = 0;
+uint16_t totalMemory = 0;
+uint16_t memPerBlock = 0;
+uint16_t minMemPerProcess = 0;
+uint16_t maxMemPerProcess = 0;
 
 void initializeFunc(std::string* action) {
     *action = commandMsg("'initialize' command recognized. Doing something.");
@@ -88,17 +89,20 @@ void initializeFunc(std::string* action) {
         else if (key == "mem-per-frame") {
             iss >> memPerBlock;
         }
-        else if (key == "mem-per-proc") {
-            iss >> memPerProcess;
+        else if (key == "min-mem-per-proc") {
+            iss >> minMemPerProcess;
+        }
+        else if (key == "max-mem-per-proc") {
+            iss >> maxMemPerProcess;
         }
     }
 
 	config.close();
-    
-    globalScheduler = std::make_shared<Scheduler>(numCPU, 10, minInstructions, maxInstructions, delayPerExec, batchFreq, scheduler, quantumCycles, totalMemory, memPerBlock, memPerProcess);
+    std::ofstream("csopesy-backing-store.txt", std::ios::trunc).close();
+    globalScheduler = std::make_shared<Scheduler>(numCPU, 10, minInstructions, maxInstructions, delayPerExec, batchFreq, scheduler, quantumCycles, totalMemory, memPerBlock, minMemPerProcess, maxMemPerProcess);
     std::thread schedulerThread([scheduler = globalScheduler]() {
         globalScheduler->fcfs();
-        });
+    });
     
 
     schedulerThread.detach();
@@ -131,10 +135,14 @@ void screenTerminal() {
 				std::shared_ptr<Screen> screen = globalScheduler->getScreen();
 
                 bool unFinished = !screen->getProcessFinished();
+                int usedMem = globalScheduler->getUsedMemForPID(screen->getPid());
+                double usagePercent = (static_cast<double>(usedMem) / (static_cast<double>(totalMemory) / memPerBlock)) * 100.0;
 
                 std::deque<std::string> logs = screen->getLogs();
                 out << "Process name: " << screen->getName() << std::endl;
                 out << "ID: " << screen->getPid() << std::endl;
+                out << "Memory Usage: " << usedMem * memPerBlock << "B/" << totalMemory << "B" << std::endl;
+                out << "Memory Util: " << std::fixed << std::setprecision(2) << usagePercent << "%" << std::endl;
                 out << "Logs:" << std::endl;
                 for (const std::string& log : logs) {
                     out << log << std::endl;
@@ -179,9 +187,11 @@ void screenTerminal() {
 
 void screenFunc(std::string* action, std::vector<std::string> cmdTokens) {
     //*action = commandMsg("'screen' command recognized. Doing something.");
-    if (cmdTokens.size() == 3) {
+    if (cmdTokens.size() == 4) {
         std::string mode = cmdTokens[1];
         std::string name = cmdTokens[2];
+        std::string memoryString = cmdTokens[3];
+        uint16_t processMemorySize = static_cast<uint16_t>(std::stoi(memoryString));
         bool nameExists = globalScheduler->findScreen(name);
         bool validMode = (mode == "-s" || mode == "-r" || mode == "-ls");
 
@@ -195,7 +205,11 @@ void screenFunc(std::string* action, std::vector<std::string> cmdTokens) {
                 *action = commandMsg("<screen." + name + "> already exists...");
                 return;
             }
-			globalScheduler->addProcess(name);
+            if (processMemorySize < 64 || processMemorySize > 65536) {
+                *action = commandMsg("Processes memory must be in a [64 - 65536] bytes range");
+                return;
+            }
+			globalScheduler->addProcess(name, processMemorySize);
 
             *action = commandMsg("Switching to <screen." + name + ">...");
         }
@@ -218,11 +232,11 @@ void screenFunc(std::string* action, std::vector<std::string> cmdTokens) {
             *action = globalScheduler->getProcessStats().str();
         }
         else {
-            *action = commandMsg("Invalid screen command. Use 'screen -s <name>' | 'screen -r <name>' | 'screen -ls'.");
+            *action = commandMsg("Invalid screen command. Use 'screen -s <name> <memory_size>' | 'screen -r <name>' | 'screen -ls'.");
         }
     }
     else {
-        *action = commandMsg("Invalid screen command. Use 'screen -s <name>' | 'screen -r <name>' | 'screen -ls'");
+        *action = commandMsg("Invalid screen command. Use 'screen -s <name> <memory_size>' | 'screen -r <name>' | 'screen -ls'");
     }
 }
 
@@ -269,9 +283,13 @@ void reportUtilFunc(std::string* action) {
     MyFile.close();
 }
 
+void vmstatFunc(std::string* action) {
+    *action = globalScheduler->getVmStats().str();
+}
+
 void handleInput(std::vector<std::string> cmdTokens) {
     std::string action;
-    std::vector<std::string> validCommands = { "scheduler-start", "scheduler-stop", "report-util", "screen", "marquee" };
+    std::vector<std::string> validCommands = { "scheduler-start", "scheduler-stop", "report-util", "screen", "marquee", "vmstat"};
     std::string tempCommand = cmdTokens[0];
     if (tempCommand == "initialize") {
         initializeFunc(&action);
@@ -297,6 +315,9 @@ void handleInput(std::vector<std::string> cmdTokens) {
 				}
 				action = commandMsg("Switched to MARQUEE_CONSOLE...");
 			}
+            else if (tempCommand == "vmstat") {
+                vmstatFunc(&action);
+            }
 			else
 				action = commandMsg("Command recognized but not implemented yet...");
         }

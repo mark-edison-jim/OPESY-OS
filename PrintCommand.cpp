@@ -8,38 +8,34 @@
 #include <iterator>
 
 std::pair<uint16_t, uint16_t> PrintCommand::getVariable(){
+	int tableSize = processRef->getSymbolTableSize();
 
-	int tableSize = symbolTable->size();
+	if (tableSize == 0) {
+		return { 0, 0 };  // or handle it differently depending on your app's logic
+	}
 
 	std::random_device rd;
 	std::mt19937 gen(rd());
 	std::uniform_int_distribution<> distr(0, tableSize - 1);
 
 	int index = distr(gen);
-	auto it = symbolTable->begin();
+	auto symbolTable = processRef->getSymbolTable();
+	auto it = symbolTable.begin();
 	std::advance(it, index);
 
-	std::hash<std::string> hasher;
-	uint16_t hashedKey = hasher(it->first);
-
-	uint16_t value = static_cast<uint16_t>(it->second);
-
+	uint16_t value = processRef->getFromPhysMem(it->first);
 	return { value, 0 };
-}
-
-PrintCommand::PrintCommand(int pid, std::string& text, std::shared_ptr<std::unordered_map<std::string, uint16_t>> symbolTable, bool explicitDef) : ICommand(PRINT, pid, symbolTable), explicitDef(explicitDef) {
-	this->text = text;
 }
 
 void PrintCommand::execute(int cpuCoreID) {
 	//ICommand::execute();
 
 	logText = "";
-	if (explicitDef) {
-		uint16_t value = (*symbolTable)[targVar];
+	if (explicitDef.load()) {
+		uint16_t value = processRef->getFromPhysMem(targVar);
 		text = "Value from : " + std::to_string(value);
 	}else if (fiftyFiftyChance()) {
-		if (!symbolTable->empty()) {
+		if (processRef->getSymbolTableSize() > 0) {
 			uint16_t value = getVariable().first;
 			std::string msg = "Value from : " + std::to_string(value);
 			text = msg;

@@ -10,7 +10,8 @@ private:
     int coreID;
     int delay;
 	std::atomic<bool> processFinished = true;
-	std::atomic<int> coreCycle = 0;
+	std::atomic<uint64_t> coreCycle = 0;
+	std::atomic<uint64_t> activeCoreCycle = 0;
     std::shared_ptr<Process> process;
     std::shared_ptr<std::binary_semaphore> coreSemaphore{0};
     std::shared_ptr<std::binary_semaphore> schedSemaphore{0};
@@ -23,7 +24,7 @@ public:
         coreID(coreID), delay(delay), coreSemaphore(coreSemaphore), schedSemaphore(schedSemaphore){
 		std::thread processThread([this]() {
 			run();
-			});
+		});
 		processThread.detach();
     };
     
@@ -51,8 +52,12 @@ public:
 		process = p;
     };
 
-    std::atomic<int> getCoreCycle() const {
+    std::atomic<uint64_t> getCoreCycle() const {
 		return coreCycle.load();
+    }
+
+    std::atomic<uint64_t> getActiveCoreCycle() const {
+        return activeCoreCycle.load();
     }
 
     void initializeProcess();
@@ -67,6 +72,10 @@ public:
 
     bool isIdle() const {
 		return processFinished.load();
+    }
+
+    void flushProcessMemory() {
+        process->deallocateMemory();
     }
 
     std::shared_ptr<Process> getProcess() {

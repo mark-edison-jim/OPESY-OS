@@ -92,11 +92,60 @@ uint8_t getRandomUint8() {
     return static_cast<uint8_t>(distr(gen));
 }
 
+uint16_t intoToBytes(uint8_t first, uint8_t second){
+    uint16_t combined = (uint16_t)first | ((uint16_t)second << 8);
+    return combined;
+}
+
+std::pair<uint8_t, uint8_t> splitToBytes(uint16_t value) {
+    uint8_t low = value & 0xFF;           // lower 8 bits
+    uint8_t high = (value >> 8) & 0xFF;   // upper 8 bits
+    return { low, high };
+}
+
+unsigned int hexToInt(const std::string& hexStr) {
+    return std::stoul(hexStr, nullptr, 16);
+}
+
+std::string intToHex(unsigned int value, int width = 4) {
+    std::stringstream ss;
+    ss << "0x" << std::uppercase
+        << std::setfill('0') << std::setw(width)
+        << std::hex << value;
+    return ss.str();
+}
+
 uint64_t getRandomInstructionCount(uint64_t minInstructions, uint64_t maxInstructions) {
     std::random_device rd;
     std::mt19937_64 gen(rd());
     std::uniform_int_distribution<uint64_t> distr(minInstructions, maxInstructions);
     return distr(gen);
+}
+
+std::vector<std::string> splitString(const std::string& str, char delimiter) {
+    std::vector<std::string> tokens;
+    std::stringstream ss(str);
+    std::string token;
+
+    while (std::getline(ss, token, delimiter)) {
+        if (!token.empty()) {
+            tokens.push_back(token);
+        }
+    }
+    return tokens;
+}
+
+uint16_t getRandomMemory(uint16_t min, uint16_t max) {
+    if (min < 64 || max > 65536 || min > max) return 0;
+
+    uint16_t minExp = static_cast<uint16_t>(std::log2(min));
+    uint16_t maxExp = static_cast<uint16_t>(std::log2(max));
+
+    static std::random_device rd;
+    static std::mt19937 gen(rd());
+    std::uniform_int_distribution<uint16_t> dist(minExp, maxExp);
+
+    return static_cast<uint16_t>(1 << dist(gen));
 }
 
 int spaceWidth = getConsoleWidth();

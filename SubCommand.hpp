@@ -1,5 +1,6 @@
 #pragma once
 #include "ICommand.hpp"
+#include "Process.hpp"
 #include <string>
 #include <utility>
 
@@ -15,14 +16,14 @@ private:
 
 	std::string exp_var2;
 	uint16_t exp_value2;
-	bool explicitDef = false;
+	std::atomic<bool> explicitDef = false;
 
 	void computeExplicitValues();
 
 	void assignToVar(uint16_t);
 
 public:
-	SubCommand(int pid, std::shared_ptr<std::unordered_map<std::string, uint16_t>> symbolTable, bool explicitDef);
+	SubCommand(int pid, bool explicitDef, Process* processRef) : ICommand(SUBTRACT, pid, processRef), explicitDef(explicitDef) {};
 	void execute(int) override;
 	std::string getText() override {
 		return text;

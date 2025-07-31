@@ -18,7 +18,7 @@
 
 class Scheduler : public std::enable_shared_from_this<Scheduler> {
 private:
-    int cpuCycle = 0;
+    uint64_t cpuCycle = 0;
     std::atomic<bool> makeProcesses = false;
     std::queue<std::shared_ptr<Process>> processQueue;
     std::vector<std::shared_ptr<Process>> finishedQueue;
@@ -37,7 +37,7 @@ private:
     int currProcIdx = 0;
     //int numCommands;
     int totalCores;
-    int latestProcessID = 0;
+    size_t latestProcessID = 0;
     std::atomic<int> freeCores;
     int numProcesses;
     int execDelay;
@@ -45,16 +45,17 @@ private:
     std::string mode;
     int quantum_cycle;
 	bool exitOS = false;
-    size_t totalMemory;
-    size_t memPerBlock;
-    size_t memPerProcess;
-    MemoryAllocator memAcc;
+    uint16_t totalMemory;
+    uint16_t memPerBlock;
+    uint16_t maxMemPerBlock;
+    uint16_t minMemPerProcess;
+    std::shared_ptr<MemoryAllocator> memAcc;
     //std::vector<bool> coreBusy;
 
 public:    
-    Scheduler(int availableCores, int numProcesses, uint64_t minIns, uint64_t maxIns, int execDelay, int batchFreq, std::string mode, int quantum, size_t totalMemory, size_t memPerBlock, size_t memPerProcess)
+    Scheduler(int availableCores, int numProcesses, uint64_t minIns, uint64_t maxIns, int execDelay, int batchFreq, std::string mode, int quantum, uint16_t totalMemory, uint16_t memPerBlock, uint16_t minMemPerProcess, uint16_t maxMemPerBlock)
         : minInstructions(minIns), maxInstructions(maxIns), totalCores(availableCores), freeCores(availableCores), numProcesses(numProcesses), execDelay(execDelay), batchFreq(batchFreq), 
-        mode(mode), quantum_cycle(quantum), totalMemory(totalMemory), memPerBlock(memPerBlock), memAcc(MemoryAllocator(totalMemory, memPerBlock)), memPerProcess(memPerProcess) {
+        mode(mode), quantum_cycle(quantum), totalMemory(totalMemory), memPerBlock(memPerBlock), memAcc(std::make_shared<MemoryAllocator>(totalMemory, memPerBlock)), minMemPerProcess(minMemPerProcess), maxMemPerBlock(maxMemPerBlock){
         if (availableCores <= 0) {
             throw std::invalid_argument("Number of cores must be greater than zero.");
         }   
@@ -99,7 +100,7 @@ public:
     void checkRoundRobin();
     void checkCoreFinished();
     //bool getNextProcess(std::shared_ptr<Process>& out);
-    void addProcess(std::string processName);
+    void addProcess(std::string, uint16_t);
     void generateProcess();
 
     void makeProcess() {
@@ -181,6 +182,10 @@ public:
         return out;
     }
 
+    int getUsedMemForPID(int pid) {
+        return memAcc->calculatePIDUsedMemory(pid);
+    }
+
     void setActiveScreen(std::string screenName) {
         activeScreen = screenName;
     }
@@ -206,5 +211,55 @@ public:
 		std::lock_guard<std::mutex> screensLock(screensMtx);
 		screens[activeScreen]->clearHistory();
 	}
+
+    uint64_t getTotalCoreTicks() {
+        std::lock_guard<std::mutex> coresLock(coresMtx);
+        uint64_t totalCoreCycle = 0;
+        for (std::shared_ptr<CoreObject> core : cores) {
+            totalCoreCycle+=core->getCoreCycle();
+        }
+        return totalCoreCycle;
+    }
+
+    uint64_t getActiveCoreTicks() {
+        std::lock_guard<std::mutex> coresLock(coresMtx);
+        uint64_t totalCoreCycle = 0;
+        for (std::shared_ptr<CoreObject> core : cores) {
+            totalCoreCycle += core->getActiveCoreCycle();
+        }
+        return totalCoreCycle;
+    }
+    
+    std::vector<uint64_t> getTickInfo() {
+        uint64_t totalCoreCycles = getTotalCoreTicks();
+        uint64_t activeCoreCycles = getActiveCoreTicks();
+        uint64_t idleCoreCycles = totalCoreCycles - activeCoreCycles;
+
+        std::vector<uint64_t> coreInfo = { idleCoreCycles, activeCoreCycles, totalCoreCycles };
+        return coreInfo;
+    }
+
+    std::ostringstream getVmStats() {
+        std::ostringstream out;
+        std::vector<uint64_t> tickInfo = getTickInfo();
+
+        int overallUsedFrames = memAcc->calculateOverallUsedMemory();
+        int overallUsedMemory = overallUsedFrames * memPerBlock;
+        int freeMemory = totalMemory - overallUsedMemory;
+
+        out << "+-----------------------------------------------------------------------------------------+" << std::endl << std::endl;
+        out << "Total Memory: " << totalMemory << "B" << std::endl;
+        out << "Used Memory: " << overallUsedMemory << "B" << std::endl;
+        out << "Free Memory: " << freeMemory << "B" << std::endl;
+        out << "Idle CPU Ticks: " << std::to_string(tickInfo[0]) << std::endl;
+        out << "Active CPU Ticks: " << std::to_string(tickInfo[1]) << std::endl;
+        out << "Total CPU Ticks: " << std::to_string(tickInfo[2]) << std::endl;
+        out << "Num Paged-in: " << memAcc->getPagedIns() << std::endl;
+        out << "Num Paged-out: " << memAcc->getPagedOuts() << std::endl;
+        out << "+-----------------------------------------------------------------------------------------+" << std::endl << std::endl;
+
+        return out;
+
+    }
 
 };
