@@ -112,28 +112,32 @@ void Process::beginProcess(int coreID) {
 	state = RUNNING;
 }
 
-void Process::runCommand(){
+void Process::runCommand() {
 	commandList[commandIndex]->execute(cpuCoreID);
 
-	if(commandList[commandIndex]->getCommandType() == ICommand::PRINT){
+	if (commandList[commandIndex]->getCommandType() == ICommand::PRINT) {
 		std::string output = "(" + getTime() + ")  Core:" + std::to_string(cpuCoreID) + " \"" + commandList[commandIndex]->getLog() + "\"";
-		if(logs.size() == 10)
+		if (logs.size() == 10)
 			logs.pop_front();
 		logs.push_back(output);
-		screenRef->update(logs, commandIndex+1);
+		screenRef->update(logs, commandIndex + 1);
 		//screenRef->addCommand("", commandList[commandIndex]->getLog());
 	}
 
 	if (commandList[commandIndex]->getCommandType() == ICommand::SLEEP) {
-		SleepCommand* inst = dynamic_cast<SleepCommand*>(commandList[commandIndex].get());
-		uint8_t sleepTime = inst->getSleepTime();
-		if (sleepTime <= 0)
+		if (SleepCommand* inst = dynamic_cast<SleepCommand*>(commandList[commandIndex].get())) {
+			uint8_t sleepTime = inst->getSleepTime();
+			if (sleepTime <= 0)
+				moveToNextLine();
+		}
+		else {
 			moveToNextLine();
-	}else {
+		}
+	}
+	else {
 		moveToNextLine();
 	}
 
-		
 	if (commandIndex >= totalLines) {
 		setFinished();
 		screenRef->finish(logs);

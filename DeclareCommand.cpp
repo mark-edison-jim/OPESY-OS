@@ -23,7 +23,7 @@ std::pair<uint16_t, uint16_t> DeclareCommand::getVariable()
 }
 
 
-DeclareCommand::DeclareCommand(int pid, std::shared_ptr<std::unordered_map<std::string, uint16_t>> symbolTable, bool explicitDef) : ICommand(ADD, pid, symbolTable), explicitDef(explicitDef) {
+DeclareCommand::DeclareCommand(int pid, std::shared_ptr<std::unordered_map<std::string, uint16_t>> symbolTable, bool explicitDef) : ICommand(DECLARE, pid, symbolTable), explicitDef(explicitDef) {
 }
 
 void DeclareCommand::execute(int cpuCoreID) {

@@ -28,15 +28,14 @@ void Scheduler::fcfs() {
             //if(latestProcessID < 21)
             generateProcess();
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
-
         }
         assignNewProcesses();
-
+        
         //if(cpuCycle > 0 && cpuCycle % quantum_cycle == 0)
         //    memAcc.printStats(cpuCycle, memPerProcess);
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
 
-        //if(cpuCycle % 100 == 0)
+        if(cpuCycle % 100 == 0)
+            std::this_thread::sleep_for(std::chrono::microseconds(1));
         cpuCycle++;
     }
 }

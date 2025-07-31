@@ -69,7 +69,7 @@ void SubCommand::computeExplicitValues() {
     (*symbolTable)[targVar] = left - right;
 }
 
-SubCommand::SubCommand(int pid, std::shared_ptr<std::unordered_map<std::string, uint16_t>> symbolTable, bool explicitDef) : ICommand(ADD, pid, symbolTable), explicitDef(explicitDef) {
+SubCommand::SubCommand(int pid, std::shared_ptr<std::unordered_map<std::string, uint16_t>> symbolTable, bool explicitDef) : ICommand(SLEEP, pid, symbolTable), explicitDef(explicitDef) {
     this->text = text;
 }
 
