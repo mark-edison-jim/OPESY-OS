@@ -91,7 +91,7 @@ public:
 
 	void deallocateMemory() {
 		symbolTable.clear();
-		memAccRef->removeFrames(pageToFrame);
+		memAccRef->removeFrames(pageToFrame, pid);
 		//memAccRef->removeFromBS(pid);
 	}
 

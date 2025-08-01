@@ -12,12 +12,16 @@ void Scheduler::fcfs() {
 
     while (!exitOS) {
 
-        for (int i = 0; i < totalCores; ++i)
-            coreSemaphores[i]->release();
-        
-        for (int i = 0; i < totalCores; ++i)
-            schedSemaphores[i]->acquire();
+        //for (int i = 0; i < totalCores; ++i)
+        //    coreSemaphores[i]->release();
+        //
+        //for (int i = 0; i < totalCores; ++i)
+        //    schedSemaphores[i]->acquire();
 
+        for (int i = 0; i < totalCores; ++i) {
+            coreSemaphores[i]->release();       
+            schedSemaphores[i]->acquire();       
+        }
 
         checkCoreFinished();
 
@@ -25,7 +29,7 @@ void Scheduler::fcfs() {
             checkRoundRobin();
 
         if (cpuCycle > 0 && cpuCycle % (batchFreq + 1) == 0 && makeProcesses.load()) {
-            if(latestProcessID < 4)
+            if(latestProcessID < 10)
                 generateProcess();
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
@@ -116,7 +120,7 @@ void Scheduler::generateProcess() {
     uint16_t memPerProcess = (minMemPerProcess == maxMemPerBlock) ? minMemPerProcess : getRandomMemory(minMemPerProcess, maxMemPerBlock);
 
     std::string p_name = "p_" + std::to_string(latestProcessID);
-    auto newProcess = std::make_shared<Process>(latestProcessID, p_name, 20, addScreen(p_name, latestProcessID, instructionCount), memPerProcess, memPerBlock, memAcc);
+    auto newProcess = std::make_shared<Process>(latestProcessID, p_name, instructionCount, addScreen(p_name, latestProcessID, instructionCount), memPerProcess, memPerBlock, memAcc);
     
     newProcess->generateRandomCommands();
     //newProcess->fixedCommandSet();

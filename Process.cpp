@@ -188,8 +188,14 @@ void DebugPrintMap(std::vector<int>& list) {
 }
 
 void Process::loadToPhysMem(std::string varName, uint16_t value){
+	
 	int intHex = hexToInt(currentAddress);
 	int pageNumber = intHex / pageSize;
+	std::string EdebugStr = std::string("\n LOAD BEFORE CHECK: ") + std::to_string(pid) + std::string(" Type: ") + CommandTypeToString(commandList[commandIndex]->getCommandType())
+		+ std::string(" Instruction Count: ") + std::to_string(commandIndex) + "\n";
+	OutputDebugStringA(EdebugStr.c_str());
+	memAccRef->ForceDebugPrintFrameList("LOAD BEFORE CHECK");
+
 	int frameNum = checkAccessPhysMem(pageNumber);
 
 	//if (pageToFrame[pageNumber] == -1)
@@ -198,14 +204,20 @@ void Process::loadToPhysMem(std::string varName, uint16_t value){
 		symbolTable[varName] = currentAddress;
 		currentAddress = incrementHexString(currentAddress);
 	}
-	std::string debugStr = std::string("\n Process: ") + std::to_string(pid) + std::string(" Type: ") + CommandTypeToString(commandList[commandIndex]->getCommandType());
+	std::string debugStr = std::string("\n LOAD Process: ") + std::to_string(pid) + std::string(" Type: ") + CommandTypeToString(commandList[commandIndex]->getCommandType())
+		+ std::string(" Instruction Count: ") + std::to_string(commandIndex) + "\n";
 	OutputDebugStringA(debugStr.c_str());
-	DebugPrintSymbolTable(symbolTable);
+	memAccRef->ForceDebugPrintFrameList("LOAD Process:");
+	//DebugPrintSymbolTable(symbolTable);
 
 	//TODO: FIGURE OUT -1 PROBLEM IN FRAME.FRAME
 
 	memAccRef->assignToFrame(pid, symbolTable[varName], pageToFrame[pageNumber], value);
+	OutputDebugStringA("AFTER assignToFrame: \n");
+	memAccRef->ForceDebugPrintFrameList("assignToFrame");
 }
+
+	//TODO: There might be problem with swap func, like free space or kicking out, in fcfs, never need to swap
 
 int Process::checkAccessPhysMem(int pageNumber) {
 	//1. find pid
@@ -220,29 +232,56 @@ int Process::checkAccessPhysMem(int pageNumber) {
 
 	//DebugPrintMap(pageToFrame);
 	int pidFrameNum = memAccRef->findPID(pid, pageNumber); // find pid
-	if (pidFrameNum < 0) { // Existing PID Found
+	if (pidFrameNum < 0) { // No Existing PID Found
 		int freeFrameNum = memAccRef->findFreeSpace();
+		OutputDebugStringA("[DEBUG] Free frame chosen: ");
+		OutputDebugStringA(std::to_string(freeFrameNum).c_str());
+		OutputDebugStringA("\n");
 		if (freeFrameNum < 0) { //no free space and no existing PID in physmem
 			int lru = {};
-			if (memAccRef->findPidInBS(pid, pageNumber)) {// swap frame and bs
+			int test = 0;
+			if (bool found = memAccRef->findPidInBS(pid, pageNumber)) {// swap frame and bs
 				int lru = memAccRef->findLRUPage();
 				memAccRef->swapFrameWBS(pid, lru, pageNumber);
+
+				OutputDebugStringA("BAD Part: ");
+				memAccRef->ForceDebugPrintFrameList();
+				return lru;
+			}else {
+				OutputDebugStringA("NOOB Part: ");
 			}
-			else {// kick out lru and use that space
-				int lru = memAccRef->findLRUPage();
-				//memAccRef->backStorePage(lru);
-				memAccRef->swapFrameWBS(pid, lru, pageNumber);
-			}
-			return lru;
+			//else {// kick out lru and use that space
+			//	int lru = memAccRef->findLRUPage();
+			//	//memAccRef->backStorePage(lru);
+			//	memAccRef->swapFrameWBS(pid, lru, pageNumber);
+			//	OutputDebugStringA("WORSE Part: ");
+			//	test = 1;
+			//}
+			//if (memAccRef->checkFrameAtIndex(lru).pid == -1 && memAccRef->checkFrameAtIndex(lru).frame == -1) {
+			//	return test;
+			//}
 		}
 		else {// has free space but no existing PID in physmem
 			if (memAccRef->findPidInBS(pid, pageNumber)) { // load backing page into free space
-				memAccRef->swapFrameWBS(pid, freeFrameNum, pageNumber, true);
-			} 
-			return freeFrameNum; //use freespace as new page
+				memAccRef->swapFrameWBS(pid, freeFrameNum, pageNumber);
+				if (freeFrameNum == -1)
+					std::cout << "hi\n";
+				return freeFrameNum;
+			}
+			else {
+				std::cout << "hi\n";
+			}
+			//if (memAccRef->checkFrameAtIndex(freeFrameNum).pid == -1) {
+			//	return -1;
+			//}
+			 //use freespace as new page
 		}
 	}
-
+	//if (memAccRef->checkFrameAtIndex(pidFrameNum).pid == -1) {
+	//	return -1;
+	//}
+	if (pidFrameNum == -1)
+		std::cout << "hi\n";
 	return pidFrameNum; //if pid exists: use that pid frame
 }
 
@@ -251,13 +290,27 @@ uint16_t Process::getFromPhysMem(std::string varName) {
 	//DebugPrintSymbolTable(symbolTable);
 	//OutputDebugStringA(varName.c_str());
 	int pageNumber = hexToInt(vma) / pageSize;
-	int frameNum = checkAccessPhysMem(pageNumber);
-	pageToFrame[pageNumber] = frameNum;
+	std::string EdebugStr = std::string("\n GET BEFORE CHECK: ") + std::to_string(pid) + std::string(" Type: ") + CommandTypeToString(commandList[commandIndex]->getCommandType())
+		+ std::string(" Instruction Count: ") + std::to_string(commandIndex) + "\n";
+	OutputDebugStringA(EdebugStr.c_str());
+	memAccRef->ForceDebugPrintFrameList("GET BEFORE CHECK=");
 
+	int frameNum = checkAccessPhysMem(pageNumber);
+
+	pageToFrame[pageNumber] = frameNum;
+	std::string debugStr = std::string("\n GET Process: ") + std::to_string(pid) + std::string(" Type: ") + CommandTypeToString(commandList[commandIndex]->getCommandType())
+		+ std::string(" Instruction Count: ") + std::to_string(commandIndex) + "\n";
+	OutputDebugStringA(debugStr.c_str());
+	memAccRef->ForceDebugPrintFrameList("GET Process:");
+	//DebugPrintSymbolTable(symbolTable);
 	//OutputDebugStringA("getFromPhysMem\n");
 	//DebugPrintSymbolTable(symbolTable);
 	//DebugPrintMap(pageToFrame);
-	return memAccRef->getFromFrame(vma, pageToFrame[pageNumber]);
+	uint16_t value = memAccRef->getFromFrame(vma, pageToFrame[pageNumber]);
+
+	OutputDebugStringA("AFTER getFromFrame: \n");
+	memAccRef->ForceDebugPrintFrameList("getFromFrame");
+	return value;
 }
 
 uint64_t Process::getCommandIndex() const

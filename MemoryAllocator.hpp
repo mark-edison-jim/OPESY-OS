@@ -34,14 +34,24 @@ private:
 		Frame(int pid, int frame, size_t used, std::vector<uint8_t> values)
 			: pid(pid), frame(frame), used(used), values(values) {
 		}
+
+		void clear() {
+			pid = -1;
+			frame = -1;
+			used = 0;
+			std::fill(values.begin(), values.end(), 0);
+		}
 	};
 	std::vector<Frame> physMem;
 	std::mutex physMemMutex;
 	int lruPage = 0;
 
+	std::mutex debugPrintMutex;
+
 	std::atomic<size_t> pageIns = 0;
 	std::atomic<size_t> pageOuts = 0;
 
+	std::mutex opesyFileMutex;
 	std::mutex backstoreMutex;
 
 public:
@@ -101,21 +111,40 @@ public:
 		OutputDebugStringA("===================\n");
 	}
 
-	int findLRUPage() {
-		size_t min = INFINITY;
-		for (int i = 0; i < physMem.size(); i++) {
-			min = min < physMem[i].used ? min : physMem[i].used;
+	void ForceDebugPrintFrameList(std::string from = "") {
+		std::lock_guard<std::mutex> physMemLock(physMemMutex);
+		std::lock_guard<std::mutex> debugLock(debugPrintMutex);
+		OutputDebugStringA("=== Frame List ===\n");
+		int index = 0;
+		for (const auto& frame : physMem) {
+			std::string output;
+			output += "Frame " + std::to_string(index++) + ":\n";
+			output += from + "  PID: " + std::to_string(frame.pid) + "\n";
+			output += "  Page: " + std::to_string(frame.frame) + "\n";
+			output += "  Used: " + std::to_string(frame.used) + "\n";
+			output += "  Values: ";
+
+			size_t maxDisplay = std::min<size_t>(16, frame.values.size()); // truncate if too large
+			for (size_t i = 0; i < maxDisplay; ++i) {
+				output += std::to_string(frame.values[i]);
+				if (i != maxDisplay - 1) output += ", ";
+			}
+
+			if (frame.values.size() > maxDisplay)
+				output += ", ... (truncated)";
+
+			output += "\n";
+			OutputDebugStringA(output.c_str());
 		}
-		return min;
+
+		OutputDebugStringA("===================\n");
 	}
 
-	void swapFrameWBS(int pid, int frame, int pageNumber, bool freeSpace = false) {
-		Frame frameFromBS = this->retrievePageFromBS(pid, pageNumber);
-		if (freeSpace)
-			physMem[frame] = frameFromBS;
-		else
-			this->backStorePage(frame);
-		physMem[frame] = frameFromBS;
+	int findLRUPage();
+
+	std::vector<Frame> getPhysMem() {
+		std::lock_guard<std::mutex> physMemLock(physMemMutex);
+		return physMem;
 	}
 
 	int calculateOverallUsedMemory() {
@@ -140,18 +169,31 @@ public:
 		return numFrames;
 	}
 
-	void removeFrames(std::vector<int> mapTable) {
-		std::lock_guard<std::mutex> backstoreLock(backstoreMutex);
+	void removeFrames(std::vector<int> mapTable, int pid) {
+		std::lock_guard<std::mutex> physMemLock(physMemMutex);
+
 		for (int i = 0; i < mapTable.size(); i++) {
-			physMem[i] = Frame(sizePerFrame);
+			int frameIndex = mapTable[i];
+			if (frameIndex >= 0 && physMem[frameIndex].pid == pid) {
+				std::string msg = "[RemoveFrames] Clearing frame " + std::to_string(mapTable[i]) +
+					" for PID " + std::to_string(pid) + "\n";
+				OutputDebugStringA(msg.c_str());
+				physMem[mapTable[i]].clear();
+			}
 		}
+	}
+
+	Frame checkFrameAtIndex(int i) {
+		std::lock_guard<std::mutex> physMemLock(physMemMutex);
+		return physMem[i];
 	}
 
 	void backStorePage(int frameIndex);
 	void createInitialBSPages(int numPages, int);
 	bool findPidInBS(int pid, int pageNumber);
 	Frame retrievePageFromBS(int pid, int pageNumber);
-	void removeFromBS(int pid);
+	//void removeFromBS(int pid);
+	void swapFrameWBS(int pid, int frame, int pageNumber);
 
 	int findPID(int, int);
 	int findFreeSpace();

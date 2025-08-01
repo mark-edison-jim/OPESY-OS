@@ -11,8 +11,8 @@
 
 int MemoryAllocator::findPID(int pid, int pageNumber) {
 	std::lock_guard<std::mutex> physMemLock(physMemMutex);
+	OutputDebugStringA("INSEIDE findPID: \n");
 	DebugPrintFrameList(physMem);
-
 	for (int i = 0; i < physMem.size(); ++i) {
 		const Frame& frame = physMem[i];
 		if (frame.pid == pid && frame.frame == pageNumber) {
@@ -27,44 +27,48 @@ int MemoryAllocator::findPID(int pid, int pageNumber) {
 int MemoryAllocator::findFreeSpace() {
 	std::lock_guard<std::mutex> physMemLock(physMemMutex);
 	for (int i = 0; i < physMem.size(); ++i) {
-		Frame frame = physMem[i];
-		if (frame.pid < 0)
+		if (physMem[i].pid == -1) {  // directly access the actual frame
 			return i;
+		}
 	}
 	return -1;
 }
 
 bool MemoryAllocator::findPidInBS(int pid, int pageNumber) {
-	std::lock_guard<std::mutex> backstoreLock(backstoreMutex);
+	std::lock_guard<std::mutex> opesyFileLock(opesyFileMutex);
 
 	std::ifstream inFile("csopesy-backing-store.txt");
 	std::string line;
+
+	bool found = false;
 
 	while (std::getline(inFile, line)) {
 		if (line.starts_with("PID:")) {
 			std::vector<std::string> split = splitString(line.substr(5), ' ');
 			int foundPid = std::stoi(split[0]);  // after "PID: "
 			int foundPage = std::stoi(split[2]); // after "Page: "
-			OutputDebugStringA("READING foundPid\n");
-			OutputDebugStringA(std::to_string(foundPid).c_str());
-			OutputDebugStringA("\nREADING foundPage\n");
-			OutputDebugStringA(std::to_string(foundPage).c_str());
-			OutputDebugStringA("\n");
+
 			if (foundPid == pid && foundPage == pageNumber) {
-				return true;
+				OutputDebugStringA("READING foundPid: ");
+				OutputDebugStringA(std::to_string(foundPid).c_str());
+				OutputDebugStringA("\nREADING foundPage: ");
+				OutputDebugStringA(std::to_string(foundPage).c_str());
+				OutputDebugStringA("\n");
+				found = true;
+				break;
 			}
 		}
 	}
 	inFile.close();
-	return false;
+	return found;
 }
 
 void MemoryAllocator::assignToFrame(int pid, std::string vma, int frame, uint16_t value) {
 	std::lock_guard<std::mutex> physMemLock(physMemMutex);
 	int offset = hexToInt(vma);
 	auto [low, high] = splitToBytes(value);
-	if (physMem[frame].pid < 0)
-		physMem[frame].pid = pid;
+	//if (physMem[frame].pid < 0)
+	//	physMem[frame].pid = pid;
 	physMem[frame].values[offset] = low;
 	physMem[frame].values[offset + 1] = high;
 	physMem[frame].used++;
@@ -79,19 +83,38 @@ uint16_t MemoryAllocator::getFromFrame(std::string vma, int frame) {
 	return intoToBytes(low, high);
 }
 
-void MemoryAllocator::backStorePage(int frameIndex) {
-	std::lock_guard<std::mutex> backstoreLock(backstoreMutex);
+int MemoryAllocator::findLRUPage() {
 	std::lock_guard<std::mutex> physMemLock(physMemMutex);
-	//OutputDebugStringA("backStorePage\n");
-	//DebugPrintFrameList(physMem);
+
+	int lruIndex = -1;
+	size_t minUsed = SIZE_MAX;
+
+	for (int i = 0; i < physMem.size(); ++i) {
+		if (physMem[i].pid != -1 && physMem[i].used < minUsed) {
+			minUsed = physMem[i].used;
+			lruIndex = i;
+		}
+	}
+
+	if (lruIndex == -1) {
+		OutputDebugStringA("[WARNING] findLRUPage() could not find any in-use frames!\n");
+	}
+	return lruIndex;
+}
+
+
+void MemoryAllocator::backStorePage(int frameIndex) {
+	std::lock_guard<std::mutex> opesyFileLock(opesyFileMutex);
+
 	Frame& frame = physMem[frameIndex];
 	std::ofstream outFile("csopesy-backing-store.txt", std::ios::app);
- 
+
 	if (outFile.is_open()) {
 		std::string pidLine = "PID: " + std::to_string(frame.pid) +
 			" Page: " + std::to_string(frame.frame) + "\n";
 		OutputDebugStringA("WRITING Backstore\n");
 		OutputDebugStringA(pidLine.c_str());
+
 		outFile << pidLine;
 		outFile << "Used: " << frame.used << "\n";
 
@@ -100,17 +123,103 @@ void MemoryAllocator::backStorePage(int frameIndex) {
 				<< std::setw(2) << std::setfill('0')
 				<< static_cast<int>(byte) << " ";
 		}
-		outFile << "\n";  
-	}
-	outFile.close();
+		outFile << "\n";
+		outFile.flush();
 
-	physMem[frameIndex] = Frame(sizePerFrame);
+		if (outFile.fail()) {
+			OutputDebugStringA("Error: Failed to write to backing store.\n");
+		}
+		else {
+			OutputDebugStringA("Successfully wrote to backing store.\n");
+		}
+	}
+	else {
+		OutputDebugStringA("Error: Could not open backing store file.\n");
+	}
+
+	outFile.close();
+	Frame f = physMem[frameIndex];
+	physMem[frameIndex].clear();
+	OutputDebugStringA("I CLEARED:");
+	OutputDebugStringA(std::to_string(f.pid).c_str());
+	OutputDebugStringA("\n");
 	pageOuts++;
 }
 
+MemoryAllocator::Frame MemoryAllocator::retrievePageFromBS(int pid, int pageNumber) {
+	//std::lock_guard<std::mutex> backstoreLock(backstoreMutex);
+	std::lock_guard<std::mutex> opesyFileLock(opesyFileMutex);
+
+	std::ostringstream oss;
+
+	std::ifstream inFile("csopesy-backing-store.txt");
+	//std::ofstream tempFile("backstoreTemp.txt");
+
+	std::string pidLine, usedLine, valuesLine;
+	Frame result(sizePerFrame);
+	bool found = false;
+
+	while (std::getline(inFile, pidLine)) {
+		std::getline(inFile, usedLine);
+		std::getline(inFile, valuesLine);
+
+		if (!found && pidLine.rfind("PID:", 0) == 0) {
+			std::vector<std::string> split = splitString(pidLine.substr(5), ' ');
+			int foundPid = std::stoi(split[0]);  // after "PID: "
+			int foundPage = std::stoi(split[2]); // after "Page: "
+
+			//std::string debugMsg = "[DEBUG] Found PID: " + std::to_string(foundPid) + " Page: " + std::to_string(foundPage) + "\n";
+			//OutputDebugStringA(debugMsg.c_str());
+
+			if (foundPid == pid && foundPage == pageNumber) {
+				int used = std::stoi(usedLine.substr(6));  // after "Used: "
+				OutputDebugStringA("RETRIVING foundPid: ");
+				OutputDebugStringA(std::to_string(foundPid).c_str());
+				OutputDebugStringA("\n");
+				OutputDebugStringA("RETRIVING foundPage: ");
+				OutputDebugStringA(std::to_string(foundPage).c_str());
+				OutputDebugStringA("\n");
+
+				std::vector<uint8_t> values;
+				std::istringstream valueStream(valuesLine);
+				std::string token;
+				while (valueStream >> token) {
+					int byte;
+					std::istringstream(token) >> std::hex >> byte;
+					values.push_back(static_cast<uint8_t>(byte));
+				}
+
+				result = Frame(pid, foundPage, used, values);
+				found = true;
+				continue;  // Skip writing this 3-line block
+			}
+		}
+
+		// Write this block to temp file
+		oss << pidLine << "\n";
+		oss << usedLine << "\n";
+		oss << valuesLine << "\n";
+	}
+
+	// Flush and close properly
+	inFile.close();
+
+	std::this_thread::sleep_for(std::chrono::milliseconds(10));
+
+	std::ofstream outFile("csopesy-backing-store.txt");
+	outFile << oss.str();
+	outFile.flush();
+	outFile.close();
+
+	if (found)
+		pageIns++;
+	return result;
+
+}
+
 void MemoryAllocator::createInitialBSPages(int numPages, int pid) {
-	std::lock_guard<std::mutex> backstoreLock(backstoreMutex);
-	std::lock_guard<std::mutex> physMemLock(physMemMutex);
+	std::lock_guard<std::mutex> opesyFileLock(opesyFileMutex);
+
 	//OutputDebugStringA("backStorePage\n");
 	//DebugPrintFrameList(physMem);
 
@@ -140,72 +249,106 @@ void MemoryAllocator::createInitialBSPages(int numPages, int pid) {
 	outFile.close();
 }
 
-MemoryAllocator::Frame MemoryAllocator::retrievePageFromBS(int pid, int pageNumber) {
-	std::lock_guard<std::mutex> backstoreLock(backstoreMutex);
+void MemoryAllocator::swapFrameWBS(int pid, int frame, int pageNumber) {
 	std::lock_guard<std::mutex> physMemLock(physMemMutex);
 
-	std::ifstream inFile("csopesy-backing-store.txt");
-	std::ofstream tempFile("backstoreTemp.txt");
+	// Fetch the page to load
+	Frame frameFromBS = this->retrievePageFromBS(pid, pageNumber);
 
-	std::string pidLine, usedLine, valuesLine;
-	Frame result(sizePerFrame);
-	bool found = false;
+	// Debug info
+	OutputDebugStringA("[DEBUG] Assigning PID ");
+	OutputDebugStringA(std::to_string(pid).c_str());
+	OutputDebugStringA(" to frame ");
+	OutputDebugStringA(std::to_string(frame).c_str());
+	OutputDebugStringA(" for page ");
+	OutputDebugStringA(std::to_string(pageNumber).c_str());
+	OutputDebugStringA("\n");
 
-	while (std::getline(inFile, pidLine)) {
-		std::getline(inFile, usedLine);
-		std::getline(inFile, valuesLine);
+	bool isActuallyFree = (physMem[frame].pid == -1 && physMem[frame].frame == -1);
 
-		if (!found && pidLine.rfind("PID:", 0) == 0) {
-			std::vector<std::string> split = splitString(pidLine.substr(5), ' ');
-			int foundPid = std::stoi(split[0]);  // after "PID: "
-			int foundPage = std::stoi(split[2]); // after "Page: "
+	OutputDebugStringA("[DEBUG] Frame ");
+	OutputDebugStringA(std::to_string(frame).c_str());
+	OutputDebugStringA(isActuallyFree ? " is free\n" : " is occupied\n");
 
-			std::string debugMsg = "[DEBUG] Found PID: " + std::to_string(foundPid) + " Page: " + std::to_string(foundPage) + "\n";
-			OutputDebugStringA(debugMsg.c_str());
-
-			if (foundPid == pid && foundPage == pageNumber) {
-				int used = std::stoi(usedLine.substr(6));  // after "Used: "
-				OutputDebugStringA("RETRIVING foundPid\n");
-				OutputDebugStringA(std::to_string(foundPid).c_str());
-				OutputDebugStringA("\RETRIVING foundPage\n");
-				OutputDebugStringA(std::to_string(foundPage).c_str());
-				OutputDebugStringA("\n");
-				std::vector<uint8_t> values;
-				std::istringstream valueStream(valuesLine);
-				std::string token;
-				while (valueStream >> token) {
-					int byte;
-					std::istringstream(token) >> std::hex >> byte;
-					values.push_back(static_cast<uint8_t>(byte));
-				}
-
-				result = Frame(pid, foundPage, used, values);
-				found = true;
-				continue;  // Skip writing this 3-line block
-			}
-		}
-
-		// Write this block to temp file
-		tempFile << pidLine << "\n";
-		tempFile << usedLine << "\n";
-		tempFile << valuesLine << "\n";
+	// Only back store if the frame is currently used
+	if (!isActuallyFree) {
+		this->backStorePage(frame);
 	}
 
-	// Flush and close properly before rename
-	inFile.close();
-	tempFile.flush();
-	tempFile.close();
-	std::this_thread::sleep_for(std::chrono::milliseconds(10));
+	// Replace frame contents
+	physMem[frame] = frameFromBS;
+
+	OutputDebugStringA("INSEIDE SWAP: \n");
+	DebugPrintFrameList(physMem);
+	OutputDebugStringA("\n");
+}
+
+//void MemoryAllocator::removeFromBS(int pid) {
+//	std::lock_guard<std::mutex> backstoreLock(backstoreMutex);
+//
+//	std::ifstream inFile("csopesy-backing-store.txt");
+//	std::ofstream tempFile("backstoreTemp.txt");
+//
+//	std::string pidLine, usedLine, valuesLine;
+//	bool found = false;
+//
+//	while (std::getline(inFile, pidLine)) {
+//		std::getline(inFile, usedLine);
+//		std::getline(inFile, valuesLine);
+//
+//		if (!found && pidLine.rfind("PID:", 0) == 0) {
+//			std::vector<std::string> split = splitString(pidLine.substr(5), ' ');
+//			int foundPid = std::stoi(split[0]);  // after "PID: "
+//			std::string debugMsg = "[DEBUG] Found PID to remove: " + std::to_string(foundPid) + "\n";
+//			OutputDebugStringA(debugMsg.c_str());
+//
+//			if (foundPid == pid) {
+//				found = true;
+//				continue;
+//			}
+//		}
+//
+//		tempFile << pidLine << "\n";
+//		tempFile << usedLine << "\n";
+//		tempFile << valuesLine << "\n";
+//	}
+//
+//	inFile.close();
+//	tempFile.flush();
+//	tempFile.close();
+//	std::this_thread::sleep_for(std::chrono::milliseconds(10));
+//	std::remove("csopesy-backing-store.txt");
+//
+//	bool renamed = false;
+//	int retries = 0;
+//	while (!renamed) {
+//		if (std::rename("backstoreTemp.txt", "csopesy-backing-store.txt") == 0) {
+//			OutputDebugStringA("[DEBUG] Rename successful.\n");
+//			break;
+//		}
+//		retries++;
+//		std::this_thread::sleep_for(std::chrono::milliseconds(10));
+//	}
+//	if (retries > 0) {
+//		std::string retryString = "[DEBUG] Rename failed, retrying... Attempt #" + std::to_string(retries) + "\n";
+//		OutputDebugStringA(retryString.c_str());
+//	}
+//
+//}
+
+//tempFile.flush();
+	//tempFile.close();
+	//std::this_thread::sleep_for(std::chrono::milliseconds(10));
 	// Remove original and rename with retry
-	if (std::ifstream("csopesy-backing-store.txt")) {
+	//int removeResult = std::remove("csopesy-backing-store.txt");
+	//if (removeResult != 0) {
+	//	std::string msg = "[DEBUG] Remove failed with errno=" + std::to_string(errno) + "\n";
+	//	OutputDebugStringA(msg.c_str());
+	//}
+	/*if (std::ifstream("csopesy-backing-store.txt")) {
 		OutputDebugStringA("[DEBUG] File still exists before remove.\n");
 	}
-	int removeResult = std::remove("csopesy-backing-store.txt");
-	if (removeResult != 0) {
-		std::string msg = "[DEBUG] Remove failed with errno=" + std::to_string(errno) + "\n";
-		OutputDebugStringA(msg.c_str());
-	}
-
+	std::this_thread::sleep_for(std::chrono::milliseconds(10));
 	bool renamed = false;
 	int retries = 0;
 	while (!renamed) {
@@ -225,67 +368,7 @@ MemoryAllocator::Frame MemoryAllocator::retrievePageFromBS(int pid, int pageNumb
 	if (retries > 0) {
 		std::string retryString = "[DEBUG] Rename failed, retrying... Attempt #" + std::to_string(retries) + "\n";
 		OutputDebugStringA(retryString.c_str());
-	}
-
-	if (found) 
-		pageIns++;
-	return result;
-}
-
-void MemoryAllocator::removeFromBS(int pid) {
-	std::lock_guard<std::mutex> backstoreLock(backstoreMutex);
-	std::lock_guard<std::mutex> physMemLock(physMemMutex);
-
-	std::ifstream inFile("csopesy-backing-store.txt");
-	std::ofstream tempFile("backstoreTemp.txt");
-
-	std::string pidLine, usedLine, valuesLine;
-	bool found = false;
-
-	while (std::getline(inFile, pidLine)) {
-		std::getline(inFile, usedLine);
-		std::getline(inFile, valuesLine);
-
-		if (!found && pidLine.rfind("PID:", 0) == 0) {
-			std::vector<std::string> split = splitString(pidLine.substr(5), ' ');
-			int foundPid = std::stoi(split[0]);  // after "PID: "
-			std::string debugMsg = "[DEBUG] Found PID to remove: " + std::to_string(foundPid) + "\n";
-			OutputDebugStringA(debugMsg.c_str());
-
-			if (foundPid == pid) {
-				found = true;
-				continue;
-			}
-		}
-
-		tempFile << pidLine << "\n";
-		tempFile << usedLine << "\n";
-		tempFile << valuesLine << "\n";
-	}
-
-	inFile.close();
-	tempFile.flush();
-	tempFile.close();
-	std::this_thread::sleep_for(std::chrono::milliseconds(10));
-	std::remove("csopesy-backing-store.txt");
-
-	bool renamed = false;
-	int retries = 0;
-	while (!renamed) {
-		if (std::rename("backstoreTemp.txt", "csopesy-backing-store.txt") == 0) {
-			OutputDebugStringA("[DEBUG] Rename successful.\n");
-			break;
-		}
-		retries++;
-		std::this_thread::sleep_for(std::chrono::milliseconds(10));
-	}
-	if (retries > 0) {
-		std::string retryString = "[DEBUG] Rename failed, retrying... Attempt #" + std::to_string(retries) + "\n";
-		OutputDebugStringA(retryString.c_str());
-	}
-
-}
-
+	}*/
 
 //void MemoryAllocator::printStats(int qc, size_t sizePerProc){
 //
