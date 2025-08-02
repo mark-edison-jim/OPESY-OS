@@ -285,6 +285,8 @@ int Process::checkAccessPhysMem(int pageNumber) {
 	return pidFrameNum; //if pid exists: use that pid frame
 }
 
+//TODO: Perchance remove logs and unessential if statements
+
 uint16_t Process::getFromPhysMem(std::string varName) {
 	std::string vma = symbolTable[varName];
 	//DebugPrintSymbolTable(symbolTable);
