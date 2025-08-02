@@ -187,11 +187,9 @@ void screenTerminal() {
 
 void screenFunc(std::string* action, std::vector<std::string> cmdTokens) {
     //*action = commandMsg("'screen' command recognized. Doing something.");
-    if (cmdTokens.size() == 4) {
+    if (cmdTokens.size() > 2 && cmdTokens.size() < 5) {
         std::string mode = cmdTokens[1];
         std::string name = cmdTokens[2];
-        std::string memoryString = cmdTokens[3];
-        uint16_t processMemorySize = static_cast<uint16_t>(std::stoi(memoryString));
         bool nameExists = globalScheduler->findScreen(name);
         bool validMode = (mode == "-s" || mode == "-r" || mode == "-ls");
 
@@ -205,6 +203,12 @@ void screenFunc(std::string* action, std::vector<std::string> cmdTokens) {
                 *action = commandMsg("<screen." + name + "> already exists...");
                 return;
             }
+            if (cmdTokens.size()!=4) {
+                *action = commandMsg("Please use 'screen -s <name> <memory_size>'");
+                return;
+            }
+            std::string memoryString = cmdTokens[3];
+            uint16_t processMemorySize = static_cast<uint16_t>(std::stoi(memoryString));
             if (processMemorySize < 64 || processMemorySize > 65536) {
                 *action = commandMsg("Processes memory must be in a [64 - 65536] bytes range");
                 return;
@@ -287,9 +291,13 @@ void vmstatFunc(std::string* action) {
     *action = globalScheduler->getVmStats().str();
 }
 
+void processSMIFunc(std::string* action) {
+    *action = globalScheduler->getPSMIStats().str();
+}
+
 void handleInput(std::vector<std::string> cmdTokens) {
     std::string action;
-    std::vector<std::string> validCommands = { "scheduler-start", "scheduler-stop", "report-util", "screen", "marquee", "vmstat"};
+    std::vector<std::string> validCommands = {"scheduler-start", "scheduler-stop", "report-util", "screen", "marquee", "vmstat", "process-smi"};
     std::string tempCommand = cmdTokens[0];
     if (tempCommand == "initialize") {
         initializeFunc(&action);
@@ -317,6 +325,9 @@ void handleInput(std::vector<std::string> cmdTokens) {
 			}
             else if (tempCommand == "vmstat") {
                 vmstatFunc(&action);
+            }
+            else if (tempCommand == "process-smi") {
+                processSMIFunc(&action);
             }
 			else
 				action = commandMsg("Command recognized but not implemented yet...");

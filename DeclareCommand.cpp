@@ -13,9 +13,9 @@ void DeclareCommand::declareExplicitVar(){
 }
 
 void DeclareCommand::assignToVar(uint16_t result) {
-
-    std::string varName = "var" + std::to_string(processRef->getSymbolTableSize());
+    std::string varName = "var" + std::to_string(processRef->getVarCount());
     uint16_t val1 = getRandomUint16();
+    processRef->incrementVarCount();
     processRef->loadToPhysMem(varName, result);
     //symbolTable->insert({ varName, result });
 }

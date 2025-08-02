@@ -1,9 +1,6 @@
-﻿  Process.cpp
-C:\Users\admin\Desktop\Mark\Mark's Work\College\3rd Year 3rd Term\CSOPESY\MCO\OPESY OS\Process.hpp(117,26): warning C4267: 'return': conversion from 'size_t' to 'int', possible loss of data
-  (compiling source file 'Process.cpp')
+﻿  OPESY OS.cpp
+C:\Users\admin\Desktop\Mark\Mark's Work\College\3rd Year 3rd Term\CSOPESY\MCO\OPESY OS\Process.hpp(120,26): warning C4267: 'return': conversion from 'size_t' to 'int', possible loss of data
+  (compiling source file 'OPESY%20OS.cpp')
   
-C:\Users\admin\Desktop\Mark\Mark's Work\College\3rd Year 3rd Term\CSOPESY\MCO\OPESY OS\Process.cpp(96,20): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
-C:\Users\admin\Desktop\Mark\Mark's Work\College\3rd Year 3rd Term\CSOPESY\MCO\OPESY OS\Process.cpp(106,20): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
-C:\Users\admin\Desktop\Mark\Mark's Work\College\3rd Year 3rd Term\CSOPESY\MCO\OPESY OS\Process.cpp(126,39): warning C4244: 'argument': conversion from 'uint64_t' to 'int', possible loss of data
-C:\Users\admin\Desktop\Mark\Mark's Work\College\3rd Year 3rd Term\CSOPESY\MCO\OPESY OS\Process.cpp(325,9): warning C4244: 'return': conversion from 'const uint64_t' to 'int', possible loss of data
+C:\Users\admin\Desktop\Mark\Mark's Work\College\3rd Year 3rd Term\CSOPESY\MCO\OPESY OS\OPESY OS.cpp(138,79): warning C4267: 'argument': conversion from 'size_t' to 'int', possible loss of data
   OPESY OS.vcxproj -> C:\Users\admin\Desktop\Mark\Mark's Work\College\3rd Year 3rd Term\CSOPESY\MCO\OPESY OS\x64\Debug\OPESY OS.exe

@@ -262,4 +262,58 @@ public:
 
     }
 
+    std::ostringstream getPSMIStats() {
+        std::lock_guard<std::mutex> finishedLock(finishedMtx);
+        std::lock_guard<std::mutex> coresLock(coresMtx);
+
+        std::ostringstream out;
+        std::ostringstream runningPOut;
+        //std::ostringstream finishedPOut;
+
+
+
+        int coresUsed = 0;
+        for (std::shared_ptr<CoreObject> core : cores) {
+            std::shared_ptr<Process> p = core->getProcess();
+            if (p) {
+                int usedMem = getUsedMemForPID(p->getPID());
+                coresUsed++;
+
+                std::ostringstream memUsage;
+                memUsage << usedMem * memPerBlock << "B / " << p->getMemorySize() << "B";
+
+                runningPOut << std::left << std::setw(12) << p->getName()
+                    << std::setw(20) << memUsage.str() << std::endl;
+            }
+        }
+
+
+        int freeCores = totalCores - coresUsed;
+        double cputil = (static_cast<double>(coresUsed) / totalCores) * 100.0;
+        
+        int numUsedMem = memAcc->calculateOverallUsedMemory();
+        double usagePercent = (static_cast<double>(numUsedMem * memPerBlock) / (static_cast<double>(totalMemory))) * 100.0;
+
+        //for (std::shared_ptr<Process> p : finishedQueue) {
+        //    finishedPOut << std::left << std::setw(12) << p->getName() <<
+        //        std::setw(30) << p->getDate() <<
+        //        std::setw(12) << "Finished" <<
+        //        p->getCommandIndex() << "/" << p->getLinesOfCode() << std::endl;
+        //}
+
+        out << "+-----------------------------------------------------------------------------------------+" << std::endl;
+        out << "|                        PROCESS-SMI v01.00 Driver Version: 01.00                         |" << std::endl;
+        out << "+-----------------------------------------------------------------------------------------+" << std::endl;
+        out << "CPU Utilization: " << std::fixed << std::setprecision(2) << cputil << " %" << std::endl;
+        out << "Memory Usage: " << numUsedMem * memPerBlock << "B / " << totalMemory << "B" << std::endl;
+        out << "Memory Util: " << std::fixed << std::setprecision(2) << usagePercent << "%" << std::endl;
+        out << "+=========================================================================================+" << std::endl;
+        out << "Running Processes and memory usage:" << std::endl;
+        out << "+-----------------------------------------------------------------------------------------+" << std::endl;
+        out << runningPOut.str() << std::endl;
+        out << "+-----------------------------------------------------------------------------------------+" << std::endl << std::endl;
+
+        return out;
+    }
+
 };

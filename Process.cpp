@@ -68,7 +68,7 @@ void Process::commandSwitchCase(ICommand::CommandType type, int remainingIns, in
 }
 
 void Process::fixedSymbols() {
-	std::vector<std::string> varNames{ "x" };
+	std::vector<std::string> varNames{ "x", "y"};
 	for (int i = 0; i < varNames.size(); i++) {
 		loadToPhysMem(varNames[i], 0);
 		//symbolTable->insert({ varNames[i], 0 });
@@ -76,19 +76,26 @@ void Process::fixedSymbols() {
 }
 
 void Process::fixedCommandSet() {
-	std::vector<std::string> varNames{ "x" };
-	for (int i = 0; i < totalLines; i++) {
-		for (int j = 0; j < varNames.size(); j++) {
-			std::string text = "";
-			auto print = std::make_unique<PrintCommand>(pid, text, false, this);
-			print->setExplicit(varNames[j]);
-			commandList.push_back(std::move(print));
+	std::vector<std::string> varNames{ "x", "y"};
+	//for (int i = 0; i < totalLines; i++) {
+	totalLines = 4;
+	auto dec1 = std::make_unique<DeclareCommand>(pid, true, this);
+	dec1->setExplicit(varNames[0], 5);
+	commandList.push_back(std::move(dec1));
 
-			auto add = std::make_unique<AddCommand>(pid, false, this);
-			add->setExplicit(varNames[j], varNames[j], 0, "", getRandomFromRange(1, 10));
-			commandList.push_back(std::move(add));
-		}
-	}
+	auto dec2 = std::make_unique<DeclareCommand>(pid, true, this);
+	dec2->setExplicit(varNames[1], 10);
+	commandList.push_back(std::move(dec2));
+
+	auto add = std::make_unique<AddCommand>(pid, false, this);
+	add->setExplicit(varNames[0], varNames[0], varNames[1], 0, 0);
+	commandList.push_back(std::move(add));
+
+	std::string text = "";
+	auto print = std::make_unique<PrintCommand>(pid, text, false, this);
+	print->setExplicit(varNames[0]);
+	commandList.push_back(std::move(print));
+	//}
 }
 
 void Process::generateRandomCommands() {

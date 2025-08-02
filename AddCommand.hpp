@@ -31,7 +31,7 @@ public:
 	std::string getLog() override {
 		return logText;
 	}
-	void setExplicit(std::string target, std::string var1, uint16_t value1, std::string var2, uint16_t value2) {
+	void setExplicit(std::string target, std::string var1, std::string var2, uint16_t value1, uint16_t value2) {
 		explicitDef = true;
 		targVar = target;
 		exp_var1 = var1;

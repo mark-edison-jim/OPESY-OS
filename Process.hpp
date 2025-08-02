@@ -22,6 +22,8 @@ private:
 
 	std::deque<std::string> logs;
 
+	std::atomic<int> variableCount = 0;
+
 	std::shared_ptr<Screen> screenRef;
 
 	uint64_t commandIndex = 0;
@@ -62,6 +64,7 @@ public:
 	Process(int pid, const std::string& name, uint64_t totalLines, std::shared_ptr<Screen> screen, uint16_t memorySize, uint16_t sizePerPage, std::shared_ptr<MemoryAllocator> memAcc)
 		: pid(pid), name(name), totalLines(totalLines), screenRef(screen), memorySize(memorySize), pageSize(sizePerPage), memAccRef(memAcc) {
 		numPages = static_cast<int>(memorySize / sizePerPage);
+		numPages = numPages >= 1 ? numPages : 1;
 		pageToFrame.resize(numPages, -1);
 		memAccRef->createInitialBSPages(numPages, pid);
 	}
@@ -119,6 +122,14 @@ public:
 
 	bool checkForSTSpace() {
 		return symbolTable.size() < 32;
+	}
+
+	int getVarCount() {
+		return variableCount.load();
+	}
+
+	void incrementVarCount() {
+		variableCount++;
 	}
 
 	void commandSwitchCase(ICommand::CommandType, int, int);

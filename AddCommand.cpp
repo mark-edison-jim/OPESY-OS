@@ -11,8 +11,9 @@
 std::pair<uint16_t, uint16_t> AddCommand::getVariable() {
     // Ensure at least 2 variables exist
     while (processRef->getSymbolTableSize() < 2) {
-        std::string varName = "var" + std::to_string(processRef->getSymbolTableSize());
+        std::string varName = "var" + std::to_string(processRef->getVarCount());
         uint16_t val = getRandomUint16();
+        processRef->incrementVarCount();
         processRef->loadToPhysMem(varName, val);
     }
 
