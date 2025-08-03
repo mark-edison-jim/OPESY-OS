@@ -235,12 +235,10 @@ void Process::loadToPhysMem(std::string varName, uint16_t value){
 }
 
 void Process::loadToPhysMemAddress(std::string memaddress, uint16_t value) {
-
-	int intHex = hexToInt(currentAddress);
-	int pageNumber = intHex / pageSize;
+	int pageNumber = hexToInt(memaddress) / pageSize;
 	int frameNum = checkAccessPhysMem(pageNumber);
-
 	pageToFrame[pageNumber] = frameNum;
+
 	memAccRef->assignToFrame(pid, memaddress, pageToFrame[pageNumber], value);
 
 }
