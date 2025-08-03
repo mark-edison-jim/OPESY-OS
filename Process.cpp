@@ -65,7 +65,10 @@ void Process::commandSwitchCase(ICommand::CommandType type, int remainingIns, in
 	}
 	case ICommand::READ: {
 		commandList.push_back(std::make_unique<ReadCommand>(pid, false, this));
-		//checkPhysMem();
+		break;
+	}
+	case ICommand::WRITE: {
+		/*commandList.push_back(std::make_unique<ReadCommand>(pid, false, this));*/
 		break;
 	}
 	default:
@@ -230,6 +233,16 @@ void Process::loadToPhysMem(std::string varName, uint16_t value){
 	memAccRef->ForceDebugPrintFrameList("assignToFrame");
 }
 
+void Process::loadToPhysMemAddress(std::string memaddress, uint16_t value) {
+
+	int intHex = hexToInt(currentAddress);
+	int pageNumber = intHex / pageSize;
+	int frameNum = checkAccessPhysMem(pageNumber);
+
+	pageToFrame[pageNumber] = frameNum;
+	memAccRef->assignToFrame(pid, memaddress, pageToFrame[pageNumber], value);
+
+}
 	//TODO: There might be problem with swap func, like free space or kicking out, in fcfs, never need to swap
 
 int Process::checkAccessPhysMem(int pageNumber) {

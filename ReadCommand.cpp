@@ -6,7 +6,6 @@
 #include "utils.hpp"
 #include <random>
 #include <iterator>
-#include <iostream>
 
 void ReadCommand::readVar() {
     uint16_t value = 0;

@@ -155,6 +155,8 @@
     <ClCompile Include="SleepCommand.cpp" />
     <ClCompile Include="SubCommand.cpp" />
     <ClCompile Include="utils.cpp" />
+    <ClCompile Include="WriteCommand.cpp" />
+    <ClCompile Include="WriteCommand.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AddCommand.hpp" />
