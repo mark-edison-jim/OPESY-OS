@@ -7,6 +7,7 @@
 #include "SubCommand.hpp"
 #include "SleepCommand.hpp"
 #include "ReadCommand.hpp"
+#include "WriteCommand.hpp"
 #include <chrono>
 #include <thread> 
 #include <debugapi.h>
@@ -68,7 +69,7 @@ void Process::commandSwitchCase(ICommand::CommandType type, int remainingIns, in
 		break;
 	}
 	case ICommand::WRITE: {
-		/*commandList.push_back(std::make_unique<ReadCommand>(pid, false, this));*/
+		commandList.push_back(std::make_unique<WriteCommand>(pid, false, this));
 		break;
 	}
 	default:
