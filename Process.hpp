@@ -136,4 +136,5 @@ public:
 	void fixedCommandSet();
 	void fixedSymbols();
 	//RequirementFlags requirements;
+	uint16_t readFromPhysMem(std::string memaddress);
 };

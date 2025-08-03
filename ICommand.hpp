@@ -16,7 +16,9 @@ public:
 		ADD,
 		SUBTRACT,
 		SLEEP,
-		FOR
+		FOR,
+		READ,
+		WRITE
 	};
 
 	ICommand(CommandType type, int pid, Process* processRef) : cmdType(type), pid(pid), processRef(processRef) {}

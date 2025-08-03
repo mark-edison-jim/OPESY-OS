@@ -6,6 +6,7 @@
 #include "AddCommand.hpp"
 #include "SubCommand.hpp"
 #include "SleepCommand.hpp"
+#include "ReadCommand.hpp"
 #include <chrono>
 #include <thread> 
 #include <debugapi.h>
@@ -62,6 +63,11 @@ void Process::commandSwitchCase(ICommand::CommandType type, int remainingIns, in
 		handleForInstruction(getRandomFromRange(0, remainingIns), depth);
 		break;
 	}
+	case ICommand::READ: {
+		commandList.push_back(std::make_unique<ReadCommand>(pid, false, this));
+		//checkPhysMem();
+		break;
+	}
 	default:
 		break;
 	}
@@ -80,15 +86,15 @@ void Process::fixedCommandSet() {
 	//for (int i = 0; i < totalLines; i++) {
 	totalLines = 4;
 	auto dec1 = std::make_unique<DeclareCommand>(pid, true, this);
-	dec1->setExplicit(varNames[0], 5);
+	dec1->setExplicit(varNames[0], 767);
 	commandList.push_back(std::move(dec1));
 
 	auto dec2 = std::make_unique<DeclareCommand>(pid, true, this);
-	dec2->setExplicit(varNames[1], 10);
+	dec2->setExplicit(varNames[1], 767);
 	commandList.push_back(std::move(dec2));
 
-	auto add = std::make_unique<AddCommand>(pid, false, this);
-	add->setExplicit(varNames[0], varNames[0], varNames[1], 0, 0);
+	auto add = std::make_unique<ReadCommand>(pid, false, this);
+	add->setExplicit(varNames[0], "0x0001");
 	commandList.push_back(std::move(add));
 
 	std::string text = "";
@@ -319,6 +325,16 @@ uint16_t Process::getFromPhysMem(std::string varName) {
 
 	OutputDebugStringA("AFTER getFromFrame: \n");
 	memAccRef->ForceDebugPrintFrameList("getFromFrame");
+	return value;
+}
+
+uint16_t Process::readFromPhysMem(std::string memaddress) {
+	int pageNumber = hexToInt(memaddress) / pageSize;
+	int frameNum = checkAccessPhysMem(pageNumber);
+	pageToFrame[pageNumber] = frameNum;
+
+	uint16_t value = memAccRef->getFromFrame(memaddress, pageToFrame[pageNumber]);
+
 	return value;
 }
 
