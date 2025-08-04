@@ -28,7 +28,7 @@ void Scheduler::fcfs() {
         if (mode == "rr")
             checkRoundRobin();
 
-        if (cpuCycle > 0 && cpuCycle % (batchFreq + 1) == 0 && makeProcesses.load()) {
+        if (makeProcesses.load() && cpuCycle > 0 && cpuCycle % (batchFreq + 1) == 0) {
             //if(latestProcessID < 10)
                 generateProcess();
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
@@ -118,8 +118,7 @@ void Scheduler::addProcess(std::string processName, uint16_t memPerProcess) {
 }
 
 void Scheduler::addProcess(std::string processName, uint16_t memPerProcess, std::string commandsList) {
-    uint64_t instructionCount = (minInstructions == maxInstructions) ? minInstructions : getRandomInstructionCount(minInstructions, maxInstructions);
-    auto newProcess = std::make_shared<Process>(latestProcessID, processName, instructionCount, addScreen(processName, latestProcessID, instructionCount), memPerProcess, memPerBlock, memAcc);
+    auto newProcess = std::make_shared<Process>(latestProcessID, processName, 0, addScreen(processName, latestProcessID, 0), memPerProcess, memPerBlock, memAcc);
 
     //newProcess->generateRandomCommands();
     newProcess->fixedCommandSet(commandsList);

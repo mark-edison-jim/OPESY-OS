@@ -16,6 +16,7 @@
 #include <iomanip>
 #include <fstream>
 #include <chrono>
+#include <regex>
 
 using namespace std::chrono;
 
@@ -151,6 +152,9 @@ void screenTerminal() {
                     out << std::endl << "Current instrucation line: " << screen->getCurrentLine() << std::endl;
                     out << "Lines of code: " << screen->getTotalLines() << std::endl << std::endl;
                 }
+                else if (screen->getProcessAbrupted()) {
+                    out << std::endl << "Abrupted!" << std::endl << std::endl;
+                }
                 else{
                     out << std::endl << "Finished!" << std::endl << std::endl;
                 }
@@ -185,7 +189,26 @@ void screenTerminal() {
     std::cout << activeScr << ":\\> " << command << std::endl << std::endl;
 }
 
-void screenFunc(std::string* action, std::vector<std::string> cmdTokens) {
+
+std::vector<std::string> splitCommand(const std::string& input) {
+    std::vector<std::string> tokens;
+    std::regex re(R"((\".*?\"|\S+))"); // Match quoted strings or non-space chunks
+    auto begin = std::sregex_iterator(input.begin(), input.end(), re);
+    auto end = std::sregex_iterator();
+
+    for (std::sregex_iterator i = begin; i != end; ++i) {
+        std::string token = (*i)[0];
+        if (token.size() >= 2 && token.front() == '"' && token.back() == '"') {
+            // Remove outer quotes
+            token = token.substr(1, token.size() - 2);
+        }
+        tokens.push_back(token);
+    }
+
+    return tokens;
+}
+
+void screenFunc(std::string* action, std::vector<std::string> cmdTokens, std::string originalInput) {
     //*action = commandMsg("'screen' command recognized. Doing something.");
     if (cmdTokens.size() > 2 && cmdTokens.size() < 5) {
         std::string mode = cmdTokens[1];
@@ -227,25 +250,6 @@ void screenFunc(std::string* action, std::vector<std::string> cmdTokens) {
 		globalScheduler -> setActiveScreen(name);
         activeTerminal = "screen";
         hist_inc = 0;
-    }
-    else if (cmdTokens.size() == 5) {
-        std::string mode = cmdTokens[1];
-        std::string name = cmdTokens[2];
-        if (mode == "-c") {
-            bool nameExists = globalScheduler->findScreen(name);
-            if (!nameExists) {
-                *action = commandMsg("<screen." + name + "> does not exist...");
-                return;
-            }
-            //screen -c process2 4096 "DECLARE varA 10; DECLARE varB 5; ADD varA varA varB; WRITE 0x500 varA; READ varC 0x500; PRINT(\"Result: \" + varC)"
-            std::string memoryString = cmdTokens[3];
-            uint16_t processMemorySize = static_cast<uint16_t>(std::stoi(memoryString));
-            
-
-            globalScheduler->addProcess(name, processMemorySize, cmdTokens[4]);
-
-            *action = commandMsg("Switching to <screen." + name + ">...");
-        }
     }else if (cmdTokens.size() == 2) {
         std::string mode = cmdTokens[1];
         if (mode == "-ls") {
@@ -253,11 +257,35 @@ void screenFunc(std::string* action, std::vector<std::string> cmdTokens) {
             *action = globalScheduler->getProcessStats().str();
         }
         else {
-            *action = commandMsg("Invalid screen command. Use 'screen -s <name> <memory_size>' | 'screen -r <name>' | 'screen -ls'.");
+            *action = commandMsg("Invalid screen command. Use 'screen -s <name> <memory_size>' | 'screen -c <name> <memory_size> [instructions] | 'screen -r <name>' | 'screen -ls'.");
+        }
+    }
+    else if (cmdTokens.size() >= 5) {
+        std::string mode = cmdTokens[1];
+        if (mode == "-c") {
+            std::string name = cmdTokens[2];
+            bool nameExists = globalScheduler->findScreen(name);
+            if (nameExists) {
+                *action = commandMsg("<screen." + name + "> already exists...");
+                return;
+            }
+            //screen -c process2 4096 "DECLARE varA 10; DECLARE varB 5; ADD varA varA varB; WRITE 0x500 varA; READ varC 0x500; PRINT(\"Result: \" + varC)"
+            std::string memoryString = cmdTokens[3];
+            uint16_t processMemorySize = static_cast<uint16_t>(std::stoi(memoryString));
+            std::vector<std::string> properTokens = splitCommand(originalInput);
+            globalScheduler->addProcess(name, processMemorySize, properTokens[4]);
+
+            *action = commandMsg("Switching to <screen." + name + ">...");
+            globalScheduler->setActiveScreen(name);
+            activeTerminal = "screen";
+            hist_inc = 0;
+        }
+        else {
+            *action = commandMsg("Invalid screen command. Use 'screen -s <name> <memory_size>' | 'screen -c <name> <memory_size> [instructions] | 'screen -r <name>' | 'screen -ls'.");
         }
     }
     else {
-        *action = commandMsg("Invalid screen command. Use 'screen -s <name> <memory_size>' | 'screen -r <name>' | 'screen -ls'");
+        *action = commandMsg("Invalid screen command. Use 'screen -s <name> <memory_size>' | 'screen -c <name> <memory_size> [instructions] | 'screen -r <name>' | 'screen -ls'.");
     }
 }
 
@@ -312,7 +340,7 @@ void processSMIFunc(std::string* action) {
     *action = globalScheduler->getPSMIStats().str();
 }
 
-void handleInput(std::vector<std::string> cmdTokens) {
+void handleInput(std::vector<std::string> cmdTokens, std::string originalInput) {
     std::string action;
     std::vector<std::string> validCommands = {"scheduler-start", "scheduler-stop", "report-util", "screen", "marquee", "vmstat", "process-smi"};
     std::string tempCommand = cmdTokens[0];
@@ -322,7 +350,7 @@ void handleInput(std::vector<std::string> cmdTokens) {
     else if (std::find(validCommands.begin(), validCommands.end(), tempCommand) != validCommands.end()) {
         if (isInitialized) {
             if (tempCommand == "screen") {
-                screenFunc(&action, cmdTokens);
+                screenFunc(&action, cmdTokens, originalInput);
             }
             else if (tempCommand == "scheduler-start") {
                 schedulerStartFunc(&action);
@@ -441,7 +469,7 @@ void mainTerminal() {
             }
             else {
                 cmd_hist.push_back(command);
-                handleInput(cmdTokens);
+                handleInput(cmdTokens, command);
             }
         }
 		else if ((int)ch >= 32 && (int)ch <= 126) // Printable characters

@@ -76,6 +76,34 @@ int getRandomFromRange(int min, int max) {
     return distr(gen);
 }
 
+uint16_t getRandomFrom16Range(uint16_t min, uint16_t max) {
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<uint16_t> distr(min, max);
+
+    return distr(gen);
+}
+
+uint16_t getRandomEvenFrom16Range(uint16_t min, uint16_t max) {
+    // Make sure min is even
+    if (min % 2 != 0) ++min;
+    // Make sure max is even
+    if (max % 2 != 0) --max;
+
+    if (min > max) {
+        throw std::invalid_argument("No even numbers in the given range.");
+    }
+
+    std::random_device rd;
+    std::mt19937 gen(rd());
+
+    // Number of even values in range
+    uint16_t evenCount = ((max - min) / 2) + 1;
+
+    std::uniform_int_distribution<uint16_t> distr(0, evenCount - 1);
+    return min + distr(gen) * 2;
+}
+
 uint16_t getRandomUint16() {
     std::random_device rd;
     std::mt19937 gen(rd());

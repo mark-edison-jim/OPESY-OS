@@ -34,6 +34,8 @@ bool fiftyFiftyChance();
 uint8_t getRandomUint8();
 uint16_t getRandomUint16();
 int getRandomFromRange(int, int);
+uint16_t getRandomEvenFrom16Range(uint16_t, uint16_t);
+uint16_t getRandomFrom16Range(uint16_t min, uint16_t max);
 unsigned int hexToInt(const std::string& hexStr);
 std::string intToHex(unsigned int value, int width);
 uint16_t intoToBytes(uint8_t first, uint8_t second);

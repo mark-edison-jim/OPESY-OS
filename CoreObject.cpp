@@ -12,7 +12,7 @@ void CoreObject::run() {
             activeCoreCycle++;
             //coreCycle = 1;
         }
-		if (process && process->getState() == 3)
+		if (process && (process->getState() == 3 || process->getState() == 4))
             processFinished = true;
 
         coreCycle++;

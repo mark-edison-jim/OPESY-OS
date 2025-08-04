@@ -22,8 +22,9 @@ public:
 	std::string getLog() override {
 		return logText;
 	}
-	void setExplicit(std::string target) {
+	void setExplicit(std::string target, std::string text) {
 		explicitDef = true;
+		this->text = text;
 		targVar = target;
 	}
 };

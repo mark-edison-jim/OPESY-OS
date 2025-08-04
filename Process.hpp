@@ -47,7 +47,8 @@ private:
 		READY,
 		RUNNING,
 		WAITING,
-		FINISHED
+		FINISHED,
+		MEMORY_FAULT
 	};
 
 	std::atomic<ProcessState> state = READY;
@@ -80,10 +81,12 @@ public:
 	std::string getDate();
 	ProcessState getState() const;
 	void handleForInstruction(int, int);
+	void handleExplicitForInstruction(int, std::string, int);
 	void setWaiting() {
 		state = WAITING;
 	}
 	void setFinished();
+	void setInvalidMem();
 	std::deque<std::string> getLogs() const {
 		//std::lock_guard<std::mutex> logLock(mtx);
 		return logs;
@@ -108,7 +111,7 @@ public:
 		return ss.str();
 	}
 
-	size_t getMemorySize() {
+	uint16_t getMemorySize() {
 		return memorySize;
 	}
 
@@ -136,8 +139,7 @@ public:
 	void fixedCommandSet();
 	void fixedCommandSet(std::string);
 	void fixedSymbols();
-	void explicitCommandSwitchCase(ICommand::CommandType type, int remainingIns, int depth);
-	//RequirementFlags requirements;
+	void explicitCommandSwitchCase(ICommand::CommandType type, std::vector<std::string> cmdTokens, int depth);
 	uint16_t readFromPhysMem(std::string memaddress);
 	void loadToPhysMemAddress(std::string memaddress, uint16_t value);
 };

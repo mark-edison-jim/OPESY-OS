@@ -20,6 +20,12 @@ void Screen::finish(const std::deque<std::string>& finalLogs){
     processFinished = true;
 }
 
+void Screen::invalidFinish(const std::deque<std::string>& finalLogs){
+    logs = finalLogs;
+    processFinished = true;
+    invalidMem = true;
+}
+
 void Screen::addCommand(const std::string& cmd, const std::string& output) {
     commandHistory.push_back(cmd);
     outputHistory.push_back(output);

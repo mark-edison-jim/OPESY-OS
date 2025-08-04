@@ -33,7 +33,12 @@ void PrintCommand::execute(int cpuCoreID) {
 	logText = "";
 	if (explicitDef.load()) {
 		uint16_t value = processRef->getFromPhysMem(targVar);
-		text = "Value from : " + std::to_string(value);
+		if (text.empty()) {
+			text = std::to_string(value);
+		}
+		else if (!text.empty() && !targVar.empty()) {
+			text += std::to_string(value);
+		}
 	}else if (fiftyFiftyChance()) {
 		if (processRef->getSymbolTableSize() > 0) {
 			uint16_t value = getVariable().first;

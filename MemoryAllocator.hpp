@@ -90,7 +90,7 @@ public:
 		for (const auto& frame : frames) {
 			std::string output;
 			output += "Frame " + std::to_string(index++) + ":\n";
-			output += "  PID: " + std::to_string(frame.pid) + "\n";
+			output += "  PID: " + std::to_string(frame.pid) + " ";
 			output += "  Page: " + std::to_string(frame.frame) + "\n";
 			output += "  Used: " + std::to_string(frame.used) + "\n";
 			output += "  Values: ";
@@ -119,7 +119,7 @@ public:
 		for (const auto& frame : physMem) {
 			std::string output;
 			output += "Frame " + std::to_string(index++) + ":\n";
-			output += from + "  PID: " + std::to_string(frame.pid) + "\n";
+			output += from + "  PID: " + std::to_string(frame.pid) + " ";
 			output += "  Page: " + std::to_string(frame.frame) + "\n";
 			output += "  Used: " + std::to_string(frame.used) + "\n";
 			output += "  Values: ";

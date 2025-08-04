@@ -164,10 +164,19 @@ public:
         double cputil = (static_cast<double>(coresUsed) / totalCores) * 100.0;
 
         for (std::shared_ptr<Process> p : finishedQueue) {
-            finishedPOut << std::left << std::setw(12) << p->getName() <<
-                std::setw(30) << p->getDate() <<
-                std::setw(12) << "Finished" <<
-                p->getCommandIndex() << "/" << p->getLinesOfCode() << std::endl;
+            if (p->getState() == 4) {
+                finishedPOut << std::left << std::setw(12) << p->getName() <<
+                    std::setw(30) << p->getDate() <<
+                    std::setw(12) << "Abrupted" <<
+                    p->getCommandIndex() << "/" << p->getLinesOfCode() << std::endl;
+            }
+            else {
+                finishedPOut << std::left << std::setw(12) << p->getName() <<
+                    std::setw(30) << p->getDate() <<
+                    std::setw(12) << "Finished" <<
+                    p->getCommandIndex() << "/" << p->getLinesOfCode() << std::endl;
+            }
+
         }
 
         out << "CPU Utilization: " << std::fixed << std::setprecision(2) << cputil << " %" << std::endl;

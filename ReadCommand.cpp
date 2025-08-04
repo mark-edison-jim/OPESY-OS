@@ -8,7 +8,32 @@
 #include <iterator>
 
 void ReadCommand::readVar() {
+
+    int tableSize = processRef->getSymbolTableSize();
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<> distr(0, tableSize - 1);
+
+    int index = distr(gen);
+    auto symbolTable = processRef->getSymbolTable();
+    auto it = symbolTable.begin();
+    std::advance(it, index);
+
     uint16_t value = 0;
+
+    value = processRef->readFromPhysMem(memAddress);
+    processRef->loadToPhysMem(it->first, value);
+}
+
+void ReadCommand::readExplicitVar() {
+    if (!processRef->getSymbolTable().contains(targVar) && processRef->checkForSTSpace()) {
+        uint16_t val = getRandomUint16();
+        processRef->incrementVarCount();
+        processRef->loadToPhysMem(targVar, val);
+    }
+
+    uint16_t value = 0;
+
     value = processRef->readFromPhysMem(memAddress);
     processRef->loadToPhysMem(targVar, value);
 }
@@ -18,12 +43,12 @@ std::pair<uint16_t, uint16_t> ReadCommand::getVariable()
     return std::pair<uint16_t, uint16_t>();
 }
 
-
 void ReadCommand::execute(int cpuCoreID) {
     if (explicitDef.load()) {
-        readVar();
+        readExplicitVar();
     }
     else {
-        std::cerr << "[ERROR] No variable specified for READ." << std::endl;
+        readVar();
+        //std::cerr << "[ERROR] No variable specified for READ." << std::endl;
     }
 }

@@ -20,6 +20,8 @@ inline const char* CommandTypeToString(ICommand::CommandType type) {
 	case ICommand::SUBTRACT: return "SUBTRACT";
 	case ICommand::SLEEP:    return "SLEEP";
 	case ICommand::FOR:      return "FOR";
+	case ICommand::READ:      return "READ";
+	case ICommand::WRITE:      return "WRITE";
 	default:                 return "UNKNOWN";
 	}
 }
@@ -31,6 +33,8 @@ inline ICommand::CommandType StringToCommandType(const std::string& str) {
 	if (str == "SUBTRACT") return ICommand::SUBTRACT;
 	if (str == "SLEEP")    return ICommand::SLEEP;
 	if (str == "FOR")      return ICommand::FOR;
+	if (str == "READ")      return ICommand::READ;
+	if (str == "WRITE")      return ICommand::WRITE;
 	return static_cast<ICommand::CommandType>(-1); // or a custom INVALID type
 }
 
@@ -51,6 +55,10 @@ Process::ProcessState Process::getState() const
 void Process::setFinished()
 {
 	state = FINISHED;
+}
+
+void Process::setInvalidMem() {
+	state = MEMORY_FAULT;
 }
 
 void Process::moveToNextLine()
@@ -125,18 +133,20 @@ void Process::fixedCommandSet() {
 
 	std::string text = "";
 	auto print = std::make_unique<PrintCommand>(pid, text, false, this);
-	print->setExplicit(varNames[0]);
+	print->setExplicit(varNames[0], "Value from : ");
 	commandList.push_back(std::move(print));
 	//}
 }
 
 void Process::fixedCommandSet(std::string commandsList) {
 	//"DECLARE varA 10; DECLARE varB 5; ADD varA varA varB; WRITE 0x500 varA; READ varC 0x500; PRINT(\"Result: \" + varC)"
-	std::vector<std::string> commands = split(commandsList.substr(1, commandsList.length() - 2), ';');
+	
+	std::vector<std::string> commands = split(commandsList, ';');
 	if (commands.size() > 50) return;
+
 	for(int i=0; i<commands.size(); i++){
-		int remainingIns = commands.size() - commandList.size();
-		if (remainingIns <= 0) break;
+		//int remainingIns = totalLines - commandList.size();
+		//if (remainingIns <= 0) break;
 
 		std::vector<std::string> cmdTokens = split(commands[i], ' ');
 		if (cmdTokens.size() > 0 && cmdTokens[0] == "")
@@ -144,80 +154,130 @@ void Process::fixedCommandSet(std::string commandsList) {
 
 		std::string cmdType = cmdTokens[0];
 		ICommand::CommandType type = StringToCommandType(cmdType);
-		
-		switch (type) {
-			case ICommand::PRINT: {				
-				//std::string text = "\"Hello World from <" + getName() + ">!\"";
-				//auto print = std::make_unique<PrintCommand>(pid, text, false, this);
-				//print->setExplicit(varNames[0]);
-				//commandList.push_back(std::move(print));
-				break;
-			}
-			case ICommand::DECLARE: {
-				auto ins = std::make_unique<DeclareCommand>(pid, true, this);
-				uint16_t value = static_cast<uint16_t>(std::stoul(cmdTokens[2]));
-				ins->setExplicit(cmdTokens[1], value);
-				commandList.push_back(std::move(ins));
-				break;
-			}
-			case ICommand::ADD: {
-				auto ins = std::make_unique<AddCommand>(pid, false, this);
-				std::string firstVar = cmdTokens[2];
-				std::string secondVar = cmdTokens[3];
-				uint16_t valOne = 0;
-				uint16_t valTwo = 0;
-				if (std::isdigit(firstVar[0])) {
-					valOne = static_cast<uint16_t>(std::stoul(firstVar));
-					firstVar = "";
-				}
-				if (std::isdigit(secondVar[0])) {
-					valTwo = static_cast<uint16_t>(std::stoul(secondVar));
-					secondVar = "";
-				}
 
-				ins->setExplicit(cmdTokens[1], firstVar, secondVar, valOne, valTwo);
-				commandList.push_back(std::move(ins));
-				break;
-			}
-			case ICommand::SUBTRACT: {
-				auto ins = std::make_unique<SubCommand>(pid, false, this);
-				std::string firstVar = cmdTokens[2];
-				std::string secondVar = cmdTokens[3];
-				uint16_t valOne = 0;
-				uint16_t valTwo = 0;
-				if (std::isdigit(firstVar[0])) {
-					valOne = static_cast<uint16_t>(std::stoul(firstVar));
-					firstVar = "";
-				}
-				if (std::isdigit(secondVar[0])) {
-					valTwo = static_cast<uint16_t>(std::stoul(secondVar));
-					secondVar = "";
-				}
+		explicitCommandSwitchCase(type, cmdTokens, 3);
+	}
+	totalLines = commandList.size();
+	screenRef->setTotalLines(totalLines);
+}
 
-				ins->setExplicit(cmdTokens[1], firstVar, secondVar, valOne, valTwo);
-				commandList.push_back(std::move(ins));
-				break;
+bool isStringLiteral(const std::string& s) {
+	return s.size() >= 2 && s.front() == '"' && s.back() == '"';
+}
+
+void Process::explicitCommandSwitchCase(ICommand::CommandType type, std::vector<std::string> cmdTokens, int depth) {
+	switch (type) {
+	case ICommand::PRINT: {
+		auto ins = std::make_unique<PrintCommand>(pid, "", false, this);
+		std::string text = "";
+		std::string var = "";
+		std::vector<std::string> tokenizedText = split(cmdTokens[1].substr(1, cmdTokens[1].length() - 2), ' + ');
+		for (int i = 0; i < tokenizedText.size(); i++) {
+			std::string part = tokenizedText[i];
+			if (isStringLiteral(part)) {
+				text = part;
 			}
-			case ICommand::SLEEP: {
-				commandList.push_back(std::make_unique<SleepCommand>(pid, false, this));
-				break;
+			else {
+				var = part;
 			}
-			case ICommand::FOR: {
-				//handleForInstruction(getRandomFromRange(0, remainingIns), depth);
-				break;
-			}
-			default:
-				break;
+		}
+		ins->setExplicit(var, text);
+		commandList.push_back(std::move(ins));
+
+		break;
+	}
+	case ICommand::DECLARE: {
+		auto ins = std::make_unique<DeclareCommand>(pid, true, this);
+		uint16_t value = static_cast<uint16_t>(std::stoul(cmdTokens[2]));
+		ins->setExplicit(cmdTokens[1], value);
+		commandList.push_back(std::move(ins));
+		break;
+	}
+	case ICommand::ADD: {
+		auto ins = std::make_unique<AddCommand>(pid, false, this);
+		std::string firstVar = cmdTokens[2];
+		std::string secondVar = cmdTokens[3];
+		uint16_t valOne = 0;
+		uint16_t valTwo = 0;
+		if (std::isdigit(firstVar[0])) {
+			valOne = static_cast<uint16_t>(std::stoul(firstVar));
+			firstVar = "";
+		}
+		if (std::isdigit(secondVar[0])) {
+			valTwo = static_cast<uint16_t>(std::stoul(secondVar));
+			secondVar = "";
 		}
 
-		explicitCommandSwitchCase(type, remainingIns, 3);
+		ins->setExplicit(cmdTokens[1], firstVar, secondVar, valOne, valTwo);
+		commandList.push_back(std::move(ins));
+		break;
+	}
+	case ICommand::SUBTRACT: {
+		auto ins = std::make_unique<SubCommand>(pid, false, this);
+		std::string firstVar = cmdTokens[2];
+		std::string secondVar = cmdTokens[3];
+		uint16_t valOne = 0;
+		uint16_t valTwo = 0;
+		if (std::isdigit(firstVar[0])) {
+			valOne = static_cast<uint16_t>(std::stoul(firstVar));
+			firstVar = "";
+		}
+		if (std::isdigit(secondVar[0])) {
+			valTwo = static_cast<uint16_t>(std::stoul(secondVar));
+			secondVar = "";
+		}
 
+		ins->setExplicit(cmdTokens[1], firstVar, secondVar, valOne, valTwo);
+		commandList.push_back(std::move(ins));
+		break;
+	}
+	case ICommand::SLEEP: {
+		auto ins = std::make_unique<SleepCommand>(pid, false, this);
+		uint8_t value = static_cast<uint8_t>(std::stoi(cmdTokens[1]));
+		ins->setExplicit(value);
+		commandList.push_back(std::move(ins));
+		break;
+	}
+	case ICommand::FOR: {
+		int loops = std::stoi(cmdTokens[2]);
+		handleExplicitForInstruction(loops, cmdTokens[1], depth);
+		break;
+	}
+	case ICommand::READ: {
+		auto ins = std::make_unique<ReadCommand>(pid, false, this);
+		ins->setExplicit(cmdTokens[1], cmdTokens[2]);
+		commandList.push_back(std::move(ins));
+		break;
+	}
+	case ICommand::WRITE: {
+		auto ins = std::make_unique<WriteCommand>(pid, false, this);
+		uint8_t value = static_cast<uint8_t>(std::stoi(cmdTokens[1]));
+		ins->setExplicit(cmdTokens[1], cmdTokens[2]);
+		commandList.push_back(std::move(ins));
+		break;
+	}
+	default:
+		break;
 	}
 }
 
-void Process::explicitCommandSwitchCase(ICommand::CommandType type, int remainingIns, int depth) {
+void Process::handleExplicitForInstruction(int loops, std::string commandsList, int depth) {
+	if (depth <= 0 || loops <= 0 || commandList.size() >= totalLines) return;
 
+	std::vector<std::string> commands = split(commandsList.substr(2, commandsList.length() - 3), ';');
+	for (int i = 0; i < commands.size(); i++) {
+
+		std::vector<std::string> cmdTokens = split(commands[i], ' ');
+		if (cmdTokens.size() > 0 && cmdTokens[0] == "")
+			cmdTokens.erase(cmdTokens.begin());
+
+		std::string cmdType = cmdTokens[0];
+		ICommand::CommandType type = StringToCommandType(cmdType);
+
+		explicitCommandSwitchCase(type, cmdTokens, 3);
+	}
 }
+
 
 void Process::generateRandomCommands() {
 	while (commandList.size() < totalLines) {
@@ -244,6 +304,26 @@ void Process::beginProcess(int coreID) {
 }
 
 void Process::runCommand(){
+
+	if (commandList[commandIndex]->getCommandType() == ICommand::READ) {
+		if (ReadCommand* inst = dynamic_cast<ReadCommand*>(commandList[commandIndex].get())) {
+			if (inst->isInvalidMem()) {
+				setInvalidMem();
+				screenRef->invalidFinish(logs);
+				return;
+			}
+		}
+	}
+	else if (commandList[commandIndex]->getCommandType() == ICommand::WRITE) {
+		if (WriteCommand* inst = dynamic_cast<WriteCommand*>(commandList[commandIndex].get())) {
+			if (inst->isInvalidMem()) {
+				setInvalidMem();
+				screenRef->invalidFinish(logs);
+				return;
+			}
+		}
+	}
+	
 	commandList[commandIndex]->execute(cpuCoreID);
 
 	if(commandList[commandIndex]->getCommandType() == ICommand::PRINT){

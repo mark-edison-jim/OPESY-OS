@@ -16,6 +16,7 @@ private:
     std::vector<std::string> commandHistory;
     std::vector<std::string> outputHistory;
     bool processFinished = false;
+    bool invalidMem = false;
 
 public:
     Screen() = default;
@@ -31,6 +32,10 @@ public:
         return processFinished;
     }
 
+    bool getProcessAbrupted() const {
+        return invalidMem;
+    }
+
     size_t getPid() const {
 		return pid;
 	}
@@ -43,6 +48,10 @@ public:
 		return totalLines;
 	}
 
+    void setTotalLines(int lines) {
+        totalLines = lines;
+    }
+
     const std::vector<std::string> getCommands() const;
     const std::vector<std::string> getOutputs() const;
 
@@ -53,6 +62,8 @@ public:
     void update(const std::deque<std::string>&, int);
     
     void finish(const std::deque<std::string>&);
+
+    void invalidFinish(const std::deque<std::string>& finalLogs);
 
     void addCommand(const std::string& cmd, const std::string& output);
 

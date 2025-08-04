@@ -65,7 +65,7 @@ bool MemoryAllocator::findPidInBS(int pid, int pageNumber) {
 
 void MemoryAllocator::assignToFrame(int pid, std::string vma, int frame, uint16_t value) {
 	std::lock_guard<std::mutex> physMemLock(physMemMutex);
-	int offset = hexToInt(vma);
+	int offset = hexToInt(vma) % sizePerFrame;
 	auto [low, high] = splitToBytes(value);
 	//if (physMem[frame].pid < 0)
 	//	physMem[frame].pid = pid;
@@ -76,7 +76,7 @@ void MemoryAllocator::assignToFrame(int pid, std::string vma, int frame, uint16_
 
 uint16_t MemoryAllocator::getFromFrame(std::string vma, int frame) {
 	std::lock_guard<std::mutex> physMemLock(physMemMutex);
-	int offset = hexToInt(vma);
+	int offset = hexToInt(vma) % sizePerFrame;
 	uint8_t low = physMem[frame].values[offset];
 	uint8_t high = physMem[frame].values[offset + 1];
 	physMem[frame].used++;
