@@ -134,6 +134,8 @@ public:
 
 	void commandSwitchCase(ICommand::CommandType, int, int);
 	void fixedCommandSet();
+	void fixedCommandSet(std::string);
 	void fixedSymbols();
+	void explicitCommandSwitchCase(ICommand::CommandType type, int remainingIns, int depth);
 	//RequirementFlags requirements;
 };

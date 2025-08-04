@@ -191,7 +191,7 @@ void screenFunc(std::string* action, std::vector<std::string> cmdTokens) {
         std::string mode = cmdTokens[1];
         std::string name = cmdTokens[2];
         bool nameExists = globalScheduler->findScreen(name);
-        bool validMode = (mode == "-s" || mode == "-r" || mode == "-ls");
+        bool validMode = (mode == "-s" || mode == "-r" || mode == "-ls" || mode == "-c");
 
         if (!validMode) {
             *action = commandMsg("Invalid mode. Use -s or -r.");
@@ -224,12 +224,29 @@ void screenFunc(std::string* action, std::vector<std::string> cmdTokens) {
             }
             *action = commandMsg("Switching to <screen." + name + ">...");
         }
-
 		globalScheduler -> setActiveScreen(name);
         activeTerminal = "screen";
         hist_inc = 0;
     }
-    else if (cmdTokens.size() == 2) {
+    else if (cmdTokens.size() == 5) {
+        std::string mode = cmdTokens[1];
+        std::string name = cmdTokens[2];
+        if (mode == "-c") {
+            bool nameExists = globalScheduler->findScreen(name);
+            if (!nameExists) {
+                *action = commandMsg("<screen." + name + "> does not exist...");
+                return;
+            }
+            //screen -c process2 4096 "DECLARE varA 10; DECLARE varB 5; ADD varA varA varB; WRITE 0x500 varA; READ varC 0x500; PRINT(\"Result: \" + varC)"
+            std::string memoryString = cmdTokens[3];
+            uint16_t processMemorySize = static_cast<uint16_t>(std::stoi(memoryString));
+            
+
+            globalScheduler->addProcess(name, processMemorySize, cmdTokens[4]);
+
+            *action = commandMsg("Switching to <screen." + name + ">...");
+        }
+    }else if (cmdTokens.size() == 2) {
         std::string mode = cmdTokens[1];
         if (mode == "-ls") {
 
