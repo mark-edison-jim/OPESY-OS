@@ -134,7 +134,9 @@ public:
 
 	void commandSwitchCase(ICommand::CommandType, int, int);
 	void fixedCommandSet();
+	void fixedCommandSet(std::string);
 	void fixedSymbols();
+	void explicitCommandSwitchCase(ICommand::CommandType type, int remainingIns, int depth);
 	//RequirementFlags requirements;
 	uint16_t readFromPhysMem(std::string memaddress);
 	void loadToPhysMemAddress(std::string memaddress, uint16_t value);

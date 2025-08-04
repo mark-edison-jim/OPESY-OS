@@ -117,6 +117,21 @@ void Scheduler::addProcess(std::string processName, uint16_t memPerProcess) {
 	latestProcessID++;
 }
 
+void Scheduler::addProcess(std::string processName, uint16_t memPerProcess, std::string commandsList) {
+    uint64_t instructionCount = (minInstructions == maxInstructions) ? minInstructions : getRandomInstructionCount(minInstructions, maxInstructions);
+    auto newProcess = std::make_shared<Process>(latestProcessID, processName, instructionCount, addScreen(processName, latestProcessID, instructionCount), memPerProcess, memPerBlock, memAcc);
+
+    //newProcess->generateRandomCommands();
+    newProcess->fixedCommandSet(commandsList);
+
+    //newProcess->fixedSymbols();
+
+
+    std::lock_guard<std::mutex> processLock(processMtx);
+    processQueue.push(newProcess);
+    latestProcessID++;
+}
+
 void Scheduler::generateProcess() {
     uint64_t instructionCount = (minInstructions == maxInstructions) ? minInstructions : getRandomInstructionCount(minInstructions, maxInstructions);
     uint16_t memPerProcess = (minMemPerProcess == maxMemPerBlock) ? minMemPerProcess : getRandomMemory(minMemPerProcess, maxMemPerBlock);

@@ -12,6 +12,28 @@
 #include <thread> 
 #include <debugapi.h>
 
+inline const char* CommandTypeToString(ICommand::CommandType type) {
+	switch (type) {
+	case ICommand::PRINT:    return "PRINT";
+	case ICommand::DECLARE:  return "DECLARE";
+	case ICommand::ADD:      return "ADD";
+	case ICommand::SUBTRACT: return "SUBTRACT";
+	case ICommand::SLEEP:    return "SLEEP";
+	case ICommand::FOR:      return "FOR";
+	default:                 return "UNKNOWN";
+	}
+}
+
+inline ICommand::CommandType StringToCommandType(const std::string& str) {
+	if (str == "PRINT")    return ICommand::PRINT;
+	if (str == "DECLARE")  return ICommand::DECLARE;
+	if (str == "ADD")      return ICommand::ADD;
+	if (str == "SUBTRACT") return ICommand::SUBTRACT;
+	if (str == "SLEEP")    return ICommand::SLEEP;
+	if (str == "FOR")      return ICommand::FOR;
+	return static_cast<ICommand::CommandType>(-1); // or a custom INVALID type
+}
+
 std::string Process::getName() {
 	return name;
 }
@@ -108,6 +130,95 @@ void Process::fixedCommandSet() {
 	//}
 }
 
+void Process::fixedCommandSet(std::string commandsList) {
+	//"DECLARE varA 10; DECLARE varB 5; ADD varA varA varB; WRITE 0x500 varA; READ varC 0x500; PRINT(\"Result: \" + varC)"
+	std::vector<std::string> commands = split(commandsList.substr(1, commandsList.length() - 2), ';');
+	if (commands.size() > 50) return;
+	for(int i=0; i<commands.size(); i++){
+		int remainingIns = commands.size() - commandList.size();
+		if (remainingIns <= 0) break;
+
+		std::vector<std::string> cmdTokens = split(commands[i], ' ');
+		if (cmdTokens.size() > 0 && cmdTokens[0] == "")
+			cmdTokens.erase(cmdTokens.begin());
+
+		std::string cmdType = cmdTokens[0];
+		ICommand::CommandType type = StringToCommandType(cmdType);
+		
+		switch (type) {
+			case ICommand::PRINT: {				
+				//std::string text = "\"Hello World from <" + getName() + ">!\"";
+				//auto print = std::make_unique<PrintCommand>(pid, text, false, this);
+				//print->setExplicit(varNames[0]);
+				//commandList.push_back(std::move(print));
+				break;
+			}
+			case ICommand::DECLARE: {
+				auto ins = std::make_unique<DeclareCommand>(pid, true, this);
+				uint16_t value = static_cast<uint16_t>(std::stoul(cmdTokens[2]));
+				ins->setExplicit(cmdTokens[1], value);
+				commandList.push_back(std::move(ins));
+				break;
+			}
+			case ICommand::ADD: {
+				auto ins = std::make_unique<AddCommand>(pid, false, this);
+				std::string firstVar = cmdTokens[2];
+				std::string secondVar = cmdTokens[3];
+				uint16_t valOne = 0;
+				uint16_t valTwo = 0;
+				if (std::isdigit(firstVar[0])) {
+					valOne = static_cast<uint16_t>(std::stoul(firstVar));
+					firstVar = "";
+				}
+				if (std::isdigit(secondVar[0])) {
+					valTwo = static_cast<uint16_t>(std::stoul(secondVar));
+					secondVar = "";
+				}
+
+				ins->setExplicit(cmdTokens[1], firstVar, secondVar, valOne, valTwo);
+				commandList.push_back(std::move(ins));
+				break;
+			}
+			case ICommand::SUBTRACT: {
+				auto ins = std::make_unique<SubCommand>(pid, false, this);
+				std::string firstVar = cmdTokens[2];
+				std::string secondVar = cmdTokens[3];
+				uint16_t valOne = 0;
+				uint16_t valTwo = 0;
+				if (std::isdigit(firstVar[0])) {
+					valOne = static_cast<uint16_t>(std::stoul(firstVar));
+					firstVar = "";
+				}
+				if (std::isdigit(secondVar[0])) {
+					valTwo = static_cast<uint16_t>(std::stoul(secondVar));
+					secondVar = "";
+				}
+
+				ins->setExplicit(cmdTokens[1], firstVar, secondVar, valOne, valTwo);
+				commandList.push_back(std::move(ins));
+				break;
+			}
+			case ICommand::SLEEP: {
+				commandList.push_back(std::make_unique<SleepCommand>(pid, false, this));
+				break;
+			}
+			case ICommand::FOR: {
+				//handleForInstruction(getRandomFromRange(0, remainingIns), depth);
+				break;
+			}
+			default:
+				break;
+		}
+
+		explicitCommandSwitchCase(type, remainingIns, 3);
+
+	}
+}
+
+void Process::explicitCommandSwitchCase(ICommand::CommandType type, int remainingIns, int depth) {
+
+}
+
 void Process::generateRandomCommands() {
 	while (commandList.size() < totalLines) {
 		int remainingIns = totalLines - commandList.size();
@@ -172,19 +283,6 @@ void DebugPrintSymbolTable(const std::unordered_map<std::string, std::string>& s
 	}
 	//OutputDebugStringA("\nVMA: ");
 }
-
-inline const char* CommandTypeToString(ICommand::CommandType type) {
-	switch (type) {
-	case ICommand::PRINT:    return "PRINT";
-	case ICommand::DECLARE:  return "DECLARE";
-	case ICommand::ADD:      return "ADD";
-	case ICommand::SUBTRACT: return "SUBTRACT";
-	case ICommand::SLEEP:    return "SLEEP";
-	case ICommand::FOR:      return "FOR";
-	default:                 return "UNKNOWN";
-	}
-}
-
 
 void DebugPrintCMDList(std::vector<std::unique_ptr<ICommand>>& list) {
 	OutputDebugStringA("Command List:\n");

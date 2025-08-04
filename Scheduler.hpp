@@ -101,6 +101,7 @@ public:
     void checkCoreFinished();
     //bool getNextProcess(std::shared_ptr<Process>& out);
     void addProcess(std::string, uint16_t);
+    void addProcess(std::string, uint16_t, std::string);
     void generateProcess();
 
     void makeProcess() {
