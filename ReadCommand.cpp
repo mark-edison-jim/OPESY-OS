@@ -8,6 +8,11 @@
 #include <iterator>
 
 void ReadCommand::readVar() {
+    
+    if (!processRef->getSymbolTable().contains(targVar) && processRef->checkForSTSpace()) {
+        processRef->incrementVarCount();
+        processRef->loadToPhysMem(targVar, 0);
+    }
 
     int tableSize = processRef->getSymbolTableSize();
     std::random_device rd;
@@ -26,11 +31,6 @@ void ReadCommand::readVar() {
 }
 
 void ReadCommand::readExplicitVar() {
-    if (!processRef->getSymbolTable().contains(targVar) && processRef->checkForSTSpace()) {
-        uint16_t val = getRandomUint16();
-        processRef->incrementVarCount();
-        processRef->loadToPhysMem(targVar, val);
-    }
 
     uint16_t value = 0;
 

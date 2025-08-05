@@ -1,5 +1,53 @@
-﻿  ReadCommand.cpp
-C:\Users\admin\Desktop\Mark\Mark's Work\College\3rd Year 3rd Term\CSOPESY\MCO\OPESY OS\Process.hpp(123,26): warning C4267: 'return': conversion from 'size_t' to 'int', possible loss of data
-  (compiling source file 'ReadCommand.cpp')
+﻿  Scheduler.cpp
+C:\Users\admin\Desktop\Mark\Mark's Work\College\3rd Year 3rd Term\CSOPESY\MCO\OPESY OS\Process.hpp(128,26): warning C4267: 'return': conversion from 'size_t' to 'int', possible loss of data
+  (compiling source file 'Scheduler.cpp')
+  
+C:\Users\admin\Desktop\Mark\Mark's Work\College\3rd Year 3rd Term\CSOPESY\MCO\OPESY OS\Scheduler.cpp(133,117): warning C4267: 'argument': conversion from 'size_t' to 'int', possible loss of data
+C:\Users\admin\Desktop\Mark\Mark's Work\College\3rd Year 3rd Term\CSOPESY\MCO\OPESY OS\Scheduler.cpp(148,105): warning C4267: 'argument': conversion from 'size_t' to 'int', possible loss of data
+C:\Users\admin\Desktop\Mark\Mark's Work\College\3rd Year 3rd Term\CSOPESY\MCO\OPESY OS\Scheduler.cpp(168,110): warning C4267: 'argument': conversion from 'size_t' to 'int', possible loss of data
+C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xutility(462,85): warning C4244: 'argument': conversion from 'uint64_t' to 'int', possible loss of data
+  (compiling source file 'Scheduler.cpp')
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xutility(462,85):
+      the template instantiation context (the oldest one first) is
+          C:\Users\admin\Desktop\Mark\Mark's Work\College\3rd Year 3rd Term\CSOPESY\MCO\OPESY OS\Scheduler.cpp(133,25):
+          see reference to function template instantiation 'std::shared_ptr<Process> std::make_shared<Process,size_t&,std::string&,uint64_t&,std::shared_ptr<Screen>,uint16_t&,uint16_t&,std::shared_ptr<MemoryAllocator>&>(size_t &,std::string &,uint64_t &,std::shared_ptr<Screen> &&,uint16_t &,uint16_t &,std::shared_ptr<MemoryAllocator> &)' being compiled
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\memory(2913,46):
+          see reference to function template instantiation 'std::_Ref_count_obj2<_Ty>::_Ref_count_obj2<uint64_t&,std::string&,uint64_t&,std::shared_ptr<Screen>,uint16_t&,uint16_t&,std::shared_ptr<MemoryAllocator>&>(uint64_t &,std::string &,uint64_t &,std::shared_ptr<Screen> &&,uint16_t &,uint16_t &,std::shared_ptr<MemoryAllocator> &)' being compiled
+          with
+          [
+              _Ty=Process
+          ]
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\memory(2100,18):
+          see reference to function template instantiation 'void std::_Construct_in_place<_Ty,uint64_t&,std::string&,uint64_t&,std::shared_ptr<Screen>,uint16_t&,uint16_t&,std::shared_ptr<MemoryAllocator>&>(_Ty &,uint64_t &,std::string &,uint64_t &,std::shared_ptr<Screen> &&,uint16_t &,uint16_t &,std::shared_ptr<MemoryAllocator> &) noexcept(false)' being compiled
+          with
+          [
+              _Ty=Process
+          ]
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xutility(472,14):
+          see reference to function template instantiation '_Ty *std::construct_at<_Ty,uint64_t&,std::string&,uint64_t&,std::shared_ptr<Screen>,uint16_t&,uint16_t&,std::shared_ptr<MemoryAllocator>&>(_Ty *const ,uint64_t &,std::string &,uint64_t &,std::shared_ptr<Screen> &&,uint16_t &,uint16_t &,std::shared_ptr<MemoryAllocator> &) noexcept(<expr>)' being compiled
+          with
+          [
+              _Ty=Process
+          ]
+  
+C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xutility(476,82): warning C4244: 'argument': conversion from 'uint64_t' to 'int', possible loss of data
+  (compiling source file 'Scheduler.cpp')
+  
+C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xutility(463,90): warning C4244: 'argument': conversion from 'uint64_t' to 'int', possible loss of data
+  (compiling source file 'Scheduler.cpp')
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xutility(463,90):
+      the template instantiation context (the oldest one first) is
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\memory(2100,18):
+          see reference to function template instantiation 'void std::_Construct_in_place<_Ty,uint64_t&,std::string&,uint64_t&,std::shared_ptr<Screen>,uint16_t&,uint16_t&,std::shared_ptr<MemoryAllocator>&>(_Ty &,uint64_t &,std::string &,uint64_t &,std::shared_ptr<Screen> &&,uint16_t &,uint16_t &,std::shared_ptr<MemoryAllocator> &) noexcept(false)' being compiled
+          with
+          [
+              _Ty=Process
+          ]
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xutility(472,14):
+          see reference to function template instantiation '_Ty *std::construct_at<_Ty,uint64_t&,std::string&,uint64_t&,std::shared_ptr<Screen>,uint16_t&,uint16_t&,std::shared_ptr<MemoryAllocator>&>(_Ty *const ,uint64_t &,std::string &,uint64_t &,std::shared_ptr<Screen> &&,uint16_t &,uint16_t &,std::shared_ptr<MemoryAllocator> &) noexcept(false)' being compiled
+          with
+          [
+              _Ty=Process
+          ]
   
   OPESY OS.vcxproj -> C:\Users\admin\Desktop\Mark\Mark's Work\College\3rd Year 3rd Term\CSOPESY\MCO\OPESY OS\x64\Debug\OPESY OS.exe

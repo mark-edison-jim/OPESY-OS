@@ -19,7 +19,6 @@ private:
 	std::map<std::string, std::pair<int, int>> fragmentations; // Maps process ID to memory blocks
 	uint16_t totalMemorySize;
 	int numFrames;
-
 	uint16_t sizePerFrame;
 
 	struct Frame {
@@ -54,6 +53,9 @@ private:
 	std::mutex opesyFileMutex;
 	std::mutex backstoreMutex;
 
+
+	bool isNP = false;
+
 public:
 	MemoryAllocator() = default;
 
@@ -82,6 +84,9 @@ public:
 	//	return true;
 	//}
 
+	bool getConfig() {
+		return isNP;
+	}
 
 	void DebugPrintFrameList(const std::vector<Frame>& frames) {
 		OutputDebugStringA("=== Frame List ===\n");
@@ -142,13 +147,18 @@ public:
 
 	int findLRUPage();
 
+	int getNumFrames() {
+		return numFrames;
+	}
+
 	std::vector<Frame> getPhysMem() {
 		std::lock_guard<std::mutex> physMemLock(physMemMutex);
 		return physMem;
 	}
 
 	int calculateOverallUsedMemory() {
-		std::lock_guard<std::mutex> physMemLock(physMemMutex);
+		if(!isNP)
+			std::lock_guard<std::mutex> physMemLock(physMemMutex);
 		int numFrames = 0;
 		for (int i = 0; i < physMem.size(); i++) {
 			if (physMem[i].pid >= 0) {
@@ -193,6 +203,8 @@ public:
 	bool findPidInBS(int pid, int pageNumber);
 	Frame retrievePageFromBS(int pid, int pageNumber);
 	//void removeFromBS(int pid);
+	bool loadBStoPM(int, int);
+	void deallocateRR(int pid, int numPages);
 	void swapFrameWBS(int pid, int frame, int pageNumber);
 
 	int findPID(int, int);

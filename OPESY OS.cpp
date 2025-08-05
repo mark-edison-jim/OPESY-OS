@@ -121,7 +121,7 @@ void screenTerminal() {
             hist_inc = 0;
             if (command == "exit") {
                 auto screen = globalScheduler->getScreen();
-                if(screen->getProcessFinished())
+                if(screen->getProcessFinished() && !screen->getProcessAbrupted())
                     globalScheduler->deleteScreen(screen->getName());
                 globalScheduler->setActiveScreen("");
 
@@ -148,12 +148,12 @@ void screenTerminal() {
                 for (const std::string& log : logs) {
                     out << log << std::endl;
                 }
-                if (unFinished) {
+                if (screen->getProcessAbrupted()) {
+                    out << std::endl << "Abrupted!" << std::endl << std::endl;
+                }
+                else if (unFinished) {
                     out << std::endl << "Current instrucation line: " << screen->getCurrentLine() << std::endl;
                     out << "Lines of code: " << screen->getTotalLines() << std::endl << std::endl;
-                }
-                else if (screen->getProcessAbrupted()) {
-                    out << std::endl << "Abrupted!" << std::endl << std::endl;
                 }
                 else{
                     out << std::endl << "Finished!" << std::endl << std::endl;
@@ -192,21 +192,32 @@ void screenTerminal() {
 
 std::vector<std::string> splitCommand(const std::string& input) {
     std::vector<std::string> tokens;
-    std::regex re(R"((\".*?\"|\S+))"); // Match quoted strings or non-space chunks
+    std::regex re(R"("([^"\\]*(\\")?[^"\\]*)*"|[^\s"]+)");
     auto begin = std::sregex_iterator(input.begin(), input.end(), re);
     auto end = std::sregex_iterator();
 
     for (std::sregex_iterator i = begin; i != end; ++i) {
-        std::string token = (*i)[0];
+        std::smatch match = *i;
+        std::string token = match.str();
+
+        // If token is quoted, remove quotes
         if (token.size() >= 2 && token.front() == '"' && token.back() == '"') {
-            // Remove outer quotes
             token = token.substr(1, token.size() - 2);
         }
+
         tokens.push_back(token);
     }
 
     return tokens;
 }
+
+
+//TODO: Do non demand paging
+/*
+make new functions for the backstore and load and get from physmem
+handle new logic for read and write
+make new logic for what happens if a process is loaded or put into physmem, taking up the whole mem-per-proc instead of just 1 frame.
+*/
 
 void screenFunc(std::string* action, std::vector<std::string> cmdTokens, std::string originalInput) {
     //*action = commandMsg("'screen' command recognized. Doing something.");
@@ -245,6 +256,11 @@ void screenFunc(std::string* action, std::vector<std::string> cmdTokens, std::st
                 *action = commandMsg("<screen." + name + "> does not exist...");
                 return;
             }
+            std::string invalidMem = globalScheduler->getInvalidScreenMem(name);
+            if (!invalidMem.empty()) {
+                *action = commandMsg(invalidMem);
+                return;
+            }
             *action = commandMsg("Switching to <screen." + name + ">...");
         }
 		globalScheduler -> setActiveScreen(name);
@@ -273,7 +289,7 @@ void screenFunc(std::string* action, std::vector<std::string> cmdTokens, std::st
             std::string memoryString = cmdTokens[3];
             uint16_t processMemorySize = static_cast<uint16_t>(std::stoi(memoryString));
             std::vector<std::string> properTokens = splitCommand(originalInput);
-            globalScheduler->addProcess(name, processMemorySize, properTokens[4]);
+            globalScheduler-> addProcess(name, processMemorySize, properTokens[4]);
 
             *action = commandMsg("Switching to <screen." + name + ">...");
             globalScheduler->setActiveScreen(name);

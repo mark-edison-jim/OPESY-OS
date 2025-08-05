@@ -11,8 +11,8 @@
 
 int MemoryAllocator::findPID(int pid, int pageNumber) {
 	std::lock_guard<std::mutex> physMemLock(physMemMutex);
-	OutputDebugStringA("INSEIDE findPID: \n");
-	DebugPrintFrameList(physMem);
+	//OutputDebugStringA("INSEIDE findPID: \n");
+	//DebugPrintFrameList(physMem);
 	for (int i = 0; i < physMem.size(); ++i) {
 		const Frame& frame = physMem[i];
 		if (frame.pid == pid && frame.frame == pageNumber) {
@@ -49,11 +49,11 @@ bool MemoryAllocator::findPidInBS(int pid, int pageNumber) {
 			int foundPage = std::stoi(split[2]); // after "Page: "
 
 			if (foundPid == pid && foundPage == pageNumber) {
-				OutputDebugStringA("READING foundPid: ");
-				OutputDebugStringA(std::to_string(foundPid).c_str());
-				OutputDebugStringA("\nREADING foundPage: ");
-				OutputDebugStringA(std::to_string(foundPage).c_str());
-				OutputDebugStringA("\n");
+				//OutputDebugStringA("READING foundPid: ");
+				//OutputDebugStringA(std::to_string(foundPid).c_str());
+				//OutputDebugStringA("\nREADING foundPage: ");
+				//OutputDebugStringA(std::to_string(foundPage).c_str());
+				//OutputDebugStringA("\n");
 				found = true;
 				break;
 			}
@@ -112,8 +112,8 @@ void MemoryAllocator::backStorePage(int frameIndex) {
 	if (outFile.is_open()) {
 		std::string pidLine = "PID: " + std::to_string(frame.pid) +
 			" Page: " + std::to_string(frame.frame) + "\n";
-		OutputDebugStringA("WRITING Backstore\n");
-		OutputDebugStringA(pidLine.c_str());
+		//OutputDebugStringA("WRITING Backstore\n");
+		//OutputDebugStringA(pidLine.c_str());
 
 		outFile << pidLine;
 		outFile << "Used: " << frame.used << "\n";
@@ -140,9 +140,9 @@ void MemoryAllocator::backStorePage(int frameIndex) {
 	outFile.close();
 	Frame f = physMem[frameIndex];
 	physMem[frameIndex].clear();
-	OutputDebugStringA("I CLEARED:");
-	OutputDebugStringA(std::to_string(f.pid).c_str());
-	OutputDebugStringA("\n");
+	//OutputDebugStringA("I CLEARED:");
+	//OutputDebugStringA(std::to_string(f.pid).c_str());
+	//OutputDebugStringA("\n");
 	pageOuts++;
 }
 
@@ -173,12 +173,12 @@ MemoryAllocator::Frame MemoryAllocator::retrievePageFromBS(int pid, int pageNumb
 
 			if (foundPid == pid && foundPage == pageNumber) {
 				int used = std::stoi(usedLine.substr(6));  // after "Used: "
-				OutputDebugStringA("RETRIVING foundPid: ");
-				OutputDebugStringA(std::to_string(foundPid).c_str());
-				OutputDebugStringA("\n");
-				OutputDebugStringA("RETRIVING foundPage: ");
-				OutputDebugStringA(std::to_string(foundPage).c_str());
-				OutputDebugStringA("\n");
+				//OutputDebugStringA("RETRIVING foundPid: ");
+				//OutputDebugStringA(std::to_string(foundPid).c_str());
+				//OutputDebugStringA("\n");
+				//OutputDebugStringA("RETRIVING foundPage: ");
+				//OutputDebugStringA(std::to_string(foundPage).c_str());
+				//OutputDebugStringA("\n");
 
 				std::vector<uint8_t> values;
 				std::istringstream valueStream(valuesLine);
@@ -204,7 +204,7 @@ MemoryAllocator::Frame MemoryAllocator::retrievePageFromBS(int pid, int pageNumb
 	// Flush and close properly
 	inFile.close();
 
-	std::this_thread::sleep_for(std::chrono::milliseconds(10));
+	//std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
 	std::ofstream outFile("csopesy-backing-store.txt");
 	outFile << oss.str();
@@ -232,8 +232,8 @@ void MemoryAllocator::createInitialBSPages(int numPages, int pid) {
 		if (outFile.is_open()) {
 			std::string pidLine = "PID: " + std::to_string(frame.pid) +
 				" Page: " + std::to_string(frame.frame) + "\n";
-			OutputDebugStringA("WRITING Create\n");
-			OutputDebugStringA(pidLine.c_str());
+			//OutputDebugStringA("WRITING Create\n");
+			//OutputDebugStringA(pidLine.c_str());
 			outFile << pidLine;
 			outFile << "Used: " << frame.used << "\n";
 
@@ -249,6 +249,52 @@ void MemoryAllocator::createInitialBSPages(int numPages, int pid) {
 	outFile.close();
 }
 
+bool MemoryAllocator::loadBStoPM(int pid, int numPages) {
+
+	std::vector<int> usedFrames;
+	bool inMem = true;
+
+	for (int i = 0; i < numPages; i++)
+		if (findPID(pid, i) < 0)
+			inMem = false;
+
+	if (inMem) return true;
+
+	if (findFreeSpace() > -1) {
+		for (int i = 0; i < numPages; i++) {
+			// Fetch the page to load
+			int frame = findFreeSpace();
+			if (frame > -1) {
+				std::lock_guard<std::mutex> physMemLock(physMemMutex);
+				Frame frameFromBS = this->retrievePageFromBS(pid, i);
+				usedFrames.push_back(frame);
+				physMem[frame] = frameFromBS;
+			}
+			else {
+				for (int j = 0; j < numPages; j++) {
+					int frame = findPID(pid, j);
+					if (frame > -1)
+						backStorePage(frame);
+				}
+				return false;
+			}
+		}
+	}
+	else {
+		return false;
+	}
+
+	return true;
+}
+
+void MemoryAllocator::deallocateRR(int pid, int numPages) {
+	for (int i = 0; i < numPages; i++) {
+		int frame = findPID(pid, i);
+		if(frame > -1)
+			backStorePage(frame);
+	}
+}
+
 void MemoryAllocator::swapFrameWBS(int pid, int frame, int pageNumber) {
 	std::lock_guard<std::mutex> physMemLock(physMemMutex);
 
@@ -256,19 +302,19 @@ void MemoryAllocator::swapFrameWBS(int pid, int frame, int pageNumber) {
 	Frame frameFromBS = this->retrievePageFromBS(pid, pageNumber);
 
 	// Debug info
-	OutputDebugStringA("[DEBUG] Assigning PID ");
-	OutputDebugStringA(std::to_string(pid).c_str());
-	OutputDebugStringA(" to frame ");
-	OutputDebugStringA(std::to_string(frame).c_str());
-	OutputDebugStringA(" for page ");
-	OutputDebugStringA(std::to_string(pageNumber).c_str());
-	OutputDebugStringA("\n");
+	//OutputDebugStringA("[DEBUG] Assigning PID ");
+	//OutputDebugStringA(std::to_string(pid).c_str());
+	//OutputDebugStringA(" to frame ");
+	//OutputDebugStringA(std::to_string(frame).c_str());
+	//OutputDebugStringA(" for page ");
+	//OutputDebugStringA(std::to_string(pageNumber).c_str());
+	//OutputDebugStringA("\n");
 
 	bool isActuallyFree = (physMem[frame].pid == -1 && physMem[frame].frame == -1);
 
-	OutputDebugStringA("[DEBUG] Frame ");
-	OutputDebugStringA(std::to_string(frame).c_str());
-	OutputDebugStringA(isActuallyFree ? " is free\n" : " is occupied\n");
+	//OutputDebugStringA("[DEBUG] Frame ");
+	//OutputDebugStringA(std::to_string(frame).c_str());
+	//OutputDebugStringA(isActuallyFree ? " is free\n" : " is occupied\n");
 
 	// Only back store if the frame is currently used
 	if (!isActuallyFree) {
@@ -278,9 +324,9 @@ void MemoryAllocator::swapFrameWBS(int pid, int frame, int pageNumber) {
 	// Replace frame contents
 	physMem[frame] = frameFromBS;
 
-	OutputDebugStringA("INSEIDE SWAP: \n");
-	DebugPrintFrameList(physMem);
-	OutputDebugStringA("\n");
+	//OutputDebugStringA("INSEIDE SWAP: \n");
+	//DebugPrintFrameList(physMem);
+	//OutputDebugStringA("\n");
 }
 
 //void MemoryAllocator::removeFromBS(int pid) {
@@ -348,7 +394,7 @@ void MemoryAllocator::swapFrameWBS(int pid, int frame, int pageNumber) {
 	/*if (std::ifstream("csopesy-backing-store.txt")) {
 		OutputDebugStringA("[DEBUG] File still exists before remove.\n");
 	}
-	std::this_thread::sleep_for(std::chrono::milliseconds(10));
+	//std::this_thread::sleep_for(std::chrono::milliseconds(10));
 	bool renamed = false;
 	int retries = 0;
 	while (!renamed) {
@@ -363,7 +409,7 @@ void MemoryAllocator::swapFrameWBS(int pid, int frame, int pageNumber) {
 		OutputDebugStringA(retryString.c_str());
 
 		retries++;
-		std::this_thread::sleep_for(std::chrono::milliseconds(10));
+		//std::this_thread::sleep_for(std::chrono::milliseconds(10));
 	}
 	if (retries > 0) {
 		std::string retryString = "[DEBUG] Rename failed, retrying... Attempt #" + std::to_string(retries) + "\n";

@@ -87,7 +87,7 @@ void Process::commandSwitchCase(ICommand::CommandType type, int remainingIns, in
 		break;
 	}
 	case ICommand::SLEEP: {
-		commandList.push_back(std::make_unique<SleepCommand>(pid, false, this));
+		//commandList.push_back(std::make_unique<SleepCommand>(pid, false, this));
 		break;
 	}
 	case ICommand::FOR: {
@@ -138,6 +138,25 @@ void Process::fixedCommandSet() {
 	//}
 }
 
+std::string unescapeQuotes(const std::string& s) {
+	std::string result;
+	for (size_t i = 0; i < s.size(); ++i) {
+		if (s[i] == '\\' && i + 1 < s.size() && s[i + 1] == '"') {
+			result += '"';
+			++i; // Skip the escaped quote
+		}
+		else {
+			result += s[i];
+		}
+	}
+	return result;
+}
+
+bool isStringLiteral(const std::string& s) {
+	std::string unescaped = unescapeQuotes(s);
+	return unescaped.size() >= 2 && unescaped.front() == '"' && unescaped.back() == '"';
+}
+
 void Process::fixedCommandSet(std::string commandsList) {
 	//"DECLARE varA 10; DECLARE varB 5; ADD varA varA varB; WRITE 0x500 varA; READ varC 0x500; PRINT(\"Result: \" + varC)"
 	
@@ -155,37 +174,41 @@ void Process::fixedCommandSet(std::string commandsList) {
 		std::string cmdType = cmdTokens[0];
 		ICommand::CommandType type = StringToCommandType(cmdType);
 
-		explicitCommandSwitchCase(type, cmdTokens, 3);
+		if (type == ICommand::PRINT) {
+			//"PRINT (\"Result is: \"+varX);"
+			std::string content = commands[i].substr(6);
+
+			auto ins = std::make_unique<PrintCommand>(pid, "", false, this);
+			std::string text = "";
+			std::string var = "";
+			
+			std::string removedParen = content.substr(1, content.length() - 2);
+
+			std::vector<std::string> tokenizedText = split(removedParen, '+');
+			for (int i = 0; i < tokenizedText.size(); i++) {
+				std::string part = tokenizedText[i];
+				if (isStringLiteral(part)) {
+					std::string unescaped = unescapeQuotes(part);
+					text = unescaped.substr(1, unescaped.length() - 2);		
+				}
+				else {
+					var = part;
+				}
+			}
+			ins->setExplicit(var, text);
+			commandList.push_back(std::move(ins));
+		}
+		else
+			explicitCommandSwitchCase(type, cmdTokens, 3);
 	}
 	totalLines = commandList.size();
 	screenRef->setTotalLines(totalLines);
 }
 
-bool isStringLiteral(const std::string& s) {
-	return s.size() >= 2 && s.front() == '"' && s.back() == '"';
-}
-
 void Process::explicitCommandSwitchCase(ICommand::CommandType type, std::vector<std::string> cmdTokens, int depth) {
-	switch (type) {
-	case ICommand::PRINT: {
-		auto ins = std::make_unique<PrintCommand>(pid, "", false, this);
-		std::string text = "";
-		std::string var = "";
-		std::vector<std::string> tokenizedText = split(cmdTokens[1].substr(1, cmdTokens[1].length() - 2), ' + ');
-		for (int i = 0; i < tokenizedText.size(); i++) {
-			std::string part = tokenizedText[i];
-			if (isStringLiteral(part)) {
-				text = part;
-			}
-			else {
-				var = part;
-			}
-		}
-		ins->setExplicit(var, text);
-		commandList.push_back(std::move(ins));
 
-		break;
-	}
+	// Example: "ADD var1 var2"
+	switch (type) {
 	case ICommand::DECLARE: {
 		auto ins = std::make_unique<DeclareCommand>(pid, true, this);
 		uint16_t value = static_cast<uint16_t>(std::stoul(cmdTokens[2]));
@@ -309,7 +332,7 @@ void Process::runCommand(){
 		if (ReadCommand* inst = dynamic_cast<ReadCommand*>(commandList[commandIndex].get())) {
 			if (inst->isInvalidMem()) {
 				setInvalidMem();
-				screenRef->invalidFinish(logs);
+				screenRef->invalidFinish(logs, inst->getMemAddress());
 				return;
 			}
 		}
@@ -318,7 +341,7 @@ void Process::runCommand(){
 		if (WriteCommand* inst = dynamic_cast<WriteCommand*>(commandList[commandIndex].get())) {
 			if (inst->isInvalidMem()) {
 				setInvalidMem();
-				screenRef->invalidFinish(logs);
+				screenRef->invalidFinish(logs, inst->getMemAddress());
 				return;
 			}
 		}
@@ -388,10 +411,14 @@ void Process::loadToPhysMem(std::string varName, uint16_t value){
 	int pageNumber = intHex / pageSize;
 	std::string EdebugStr = std::string("\n LOAD BEFORE CHECK: ") + std::to_string(pid) + std::string(" Type: ") + CommandTypeToString(commandList[commandIndex]->getCommandType())
 		+ std::string(" Instruction Count: ") + std::to_string(commandIndex) + "\n";
-	OutputDebugStringA(EdebugStr.c_str());
-	memAccRef->ForceDebugPrintFrameList("LOAD BEFORE CHECK");
+	//OutputDebugStringA(EdebugStr.c_str());
+	//memAccRef->ForceDebugPrintFrameList("LOAD BEFORE CHECK");
 
-	int frameNum = checkAccessPhysMem(pageNumber);
+	int frameNum = -1;
+	if (memAccRef->getConfig())
+		frameNum = checkAccessPhysMemAlt(pageNumber);
+	else
+		frameNum = checkAccessPhysMem(pageNumber);
 
 	//if (pageToFrame[pageNumber] == -1)
 	pageToFrame[pageNumber] = frameNum;
@@ -401,20 +428,26 @@ void Process::loadToPhysMem(std::string varName, uint16_t value){
 	}
 	std::string debugStr = std::string("\n LOAD Process: ") + std::to_string(pid) + std::string(" Type: ") + CommandTypeToString(commandList[commandIndex]->getCommandType())
 		+ std::string(" Instruction Count: ") + std::to_string(commandIndex) + "\n";
-	OutputDebugStringA(debugStr.c_str());
-	memAccRef->ForceDebugPrintFrameList("LOAD Process:");
+	//OutputDebugStringA(debugStr.c_str());
+	//memAccRef->ForceDebugPrintFrameList("LOAD Process:");
 	//DebugPrintSymbolTable(symbolTable);
 
 	//TODO: FIGURE OUT -1 PROBLEM IN FRAME.FRAME
 
 	memAccRef->assignToFrame(pid, symbolTable[varName], pageToFrame[pageNumber], value);
-	OutputDebugStringA("AFTER assignToFrame: \n");
-	memAccRef->ForceDebugPrintFrameList("assignToFrame");
+	//OutputDebugStringA("AFTER assignToFrame: \n");
+	//memAccRef->ForceDebugPrintFrameList("assignToFrame");
 }
 
 void Process::loadToPhysMemAddress(std::string memaddress, uint16_t value) {
 	int pageNumber = hexToInt(memaddress) / pageSize;
-	int frameNum = checkAccessPhysMem(pageNumber);
+
+	int frameNum = -1;
+	if (memAccRef->getConfig())
+		frameNum = checkAccessPhysMemAlt(pageNumber);
+	else
+		frameNum = checkAccessPhysMem(pageNumber);
+
 	pageToFrame[pageNumber] = frameNum;
 
 	memAccRef->assignToFrame(pid, memaddress, pageToFrame[pageNumber], value);
@@ -442,13 +475,13 @@ int Process::checkAccessPhysMem(int pageNumber) {
 		OutputDebugStringA("\n");
 		if (freeFrameNum < 0) { //no free space and no existing PID in physmem
 			int lru = {};
-			int test = 0;
+			//int test = 0;
 			if (bool found = memAccRef->findPidInBS(pid, pageNumber)) {// swap frame and bs
 				int lru = memAccRef->findLRUPage();
 				memAccRef->swapFrameWBS(pid, lru, pageNumber);
 
-				OutputDebugStringA("BAD Part: ");
-				memAccRef->ForceDebugPrintFrameList();
+				//OutputDebugStringA("BAD Part: ");
+				//memAccRef->ForceDebugPrintFrameList();
 				return lru;
 			}else {
 				OutputDebugStringA("NOOB Part: ");
@@ -490,6 +523,46 @@ int Process::checkAccessPhysMem(int pageNumber) {
 
 //TODO: Perchance remove logs and unessential if statements
 
+int Process::checkAccessPhysMemAlt(int pageNumber) {
+
+	int pidFrameNum = memAccRef->findPID(pid, pageNumber); // find pid
+	if (pidFrameNum < 0) { // No Existing PID Found
+		int freeFrameNum = memAccRef->findFreeSpace();
+		if (freeFrameNum < 0) { //no free space and no existing PID in physmem
+			int max = memAccRef->getNumFrames() / numPages;
+			int randomStartFrame = getRandomFromRange(0, max - 1);
+
+			int targetPage = -1;
+			for (int i = 0; i < numPages; i++) {
+				if (memAccRef->findPidInBS(pid, i))
+					memAccRef->swapFrameWBS(pid, randomStartFrame + i, i);
+				if (i == pageNumber)
+					targetPage = randomStartFrame + i;
+			}
+			if(targetPage == -1)
+				std::cout << "hi\n";
+
+			return targetPage;
+		}
+		else {
+			int targetPage = -1;
+			for (int i = 0; i < numPages; i++) {
+				if (memAccRef->findPidInBS(pid, i)) 
+					memAccRef->swapFrameWBS(pid, freeFrameNum + i, i);
+				if (i == pageNumber)
+					targetPage = freeFrameNum + i;
+			}
+			if (targetPage == -1)
+				std::cout << "hi\n";
+
+			return targetPage;
+		}
+	}
+	if (pidFrameNum == -1)
+		std::cout << "hi\n";
+	return pidFrameNum; //if pid exists: use that pid frame
+}
+
 uint16_t Process::getFromPhysMem(std::string varName) {
 	std::string vma = symbolTable[varName];
 	//DebugPrintSymbolTable(symbolTable);
@@ -497,24 +570,27 @@ uint16_t Process::getFromPhysMem(std::string varName) {
 	int pageNumber = hexToInt(vma) / pageSize;
 	std::string EdebugStr = std::string("\n GET BEFORE CHECK: ") + std::to_string(pid) + std::string(" Type: ") + CommandTypeToString(commandList[commandIndex]->getCommandType())
 		+ std::string(" Instruction Count: ") + std::to_string(commandIndex) + "\n";
-	OutputDebugStringA(EdebugStr.c_str());
-	memAccRef->ForceDebugPrintFrameList("GET BEFORE CHECK=");
-
-	int frameNum = checkAccessPhysMem(pageNumber);
+	//OutputDebugStringA(EdebugStr.c_str());
+	//memAccRef->ForceDebugPrintFrameList("GET BEFORE CHECK=");
+	int frameNum = -1;
+	if (memAccRef->getConfig())
+		frameNum = checkAccessPhysMemAlt(pageNumber);
+	else
+		frameNum = checkAccessPhysMem(pageNumber);
 
 	pageToFrame[pageNumber] = frameNum;
 	std::string debugStr = std::string("\n GET Process: ") + std::to_string(pid) + std::string(" Type: ") + CommandTypeToString(commandList[commandIndex]->getCommandType())
 		+ std::string(" Instruction Count: ") + std::to_string(commandIndex) + "\n";
-	OutputDebugStringA(debugStr.c_str());
-	memAccRef->ForceDebugPrintFrameList("GET Process:");
+	//OutputDebugStringA(debugStr.c_str());
+	//memAccRef->ForceDebugPrintFrameList("GET Process:");
 	//DebugPrintSymbolTable(symbolTable);
 	//OutputDebugStringA("getFromPhysMem\n");
 	//DebugPrintSymbolTable(symbolTable);
 	//DebugPrintMap(pageToFrame);
 	uint16_t value = memAccRef->getFromFrame(vma, pageToFrame[pageNumber]);
 
-	OutputDebugStringA("AFTER getFromFrame: \n");
-	memAccRef->ForceDebugPrintFrameList("getFromFrame");
+	//OutputDebugStringA("AFTER getFromFrame: \n");
+	//memAccRef->ForceDebugPrintFrameList("getFromFrame");
 	return value;
 }
 

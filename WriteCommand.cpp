@@ -9,27 +9,34 @@
 
 void WriteCommand::writeVal() {
     if (fiftyFiftyChance()) {
-        // given memAddress
-        uint16_t max = processRef->getMemorySize();
-        uint16_t valToWrite = processRef->getFromPhysMem(rmaSource);
-        processRef->loadToPhysMemAddress(rmaTarget, valToWrite);
+        // given var
 
+        int tableSize = processRef->getSymbolTableSize();
+        std::random_device rd;
+        std::mt19937 gen(rd());
+        std::uniform_int_distribution<> distr(0, tableSize - 1);
+
+        int index = distr(gen);
+        auto symbolTable = processRef->getSymbolTable();
+        auto it = symbolTable.begin();
+        std::advance(it, index);
+
+        if (!processRef->getSymbolTable().contains(value) && processRef->checkForSTSpace()) {
+            processRef->incrementVarCount();
+            processRef->loadToPhysMem(value, 0);
+        }
+
+        uint16_t valToWrite = processRef->getFromPhysMem(it->first);
+        processRef->loadToPhysMemAddress(rmaTarget, valToWrite);
     }
     else {
         // given actual int
-        uint16_t max = processRef->getMemorySize();
         processRef->loadToPhysMemAddress(rmaTarget, getRandomUint16());
     }
 }
 
 void WriteCommand::writeExplicitVal() {
     if (useVar) {
-        if (!processRef->getSymbolTable().contains(value) && processRef->checkForSTSpace()) {
-            uint16_t val = getRandomUint16();
-            processRef->incrementVarCount();
-            processRef->loadToPhysMem(value, val);
-        }
-
         uint16_t valToWrite = processRef->getFromPhysMem(value);
         processRef->loadToPhysMemAddress(memAddress, valToWrite);
     }

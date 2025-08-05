@@ -8,6 +8,12 @@
 #include <iterator>
 
 void DeclareCommand::declareExplicitVar(){
+    if (!processRef->getSymbolTable().contains(targVar) && processRef->checkForSTSpace()) {
+        uint16_t val = getRandomUint16();
+        processRef->incrementVarCount();
+        processRef->loadToPhysMem(targVar, val);
+    }
+
     processRef->loadToPhysMem(targVar, exp_value);
     //(*symbolTable)[targVar] = exp_value;
 }

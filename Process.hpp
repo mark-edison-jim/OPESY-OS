@@ -93,12 +93,17 @@ public:
 	}
 	void loadToPhysMem(std::string, uint16_t);
 	int checkAccessPhysMem(int pageNumber);
+	int checkAccessPhysMemAlt(int pageNumber);
 	uint16_t getFromPhysMem(std::string varName);
 
 	void deallocateMemory() {
 		symbolTable.clear();
 		memAccRef->removeFrames(pageToFrame, pid);
 		//memAccRef->removeFromBS(pid);
+	}
+
+	std::vector<int> getP2F() {
+		return pageToFrame;
 	}
 
 	std::string incrementHexString(const std::string& hexStr) {
@@ -123,8 +128,13 @@ public:
 		return symbolTable.size();
 	}
 
+	int getNumPages() {
+		return numPages;
+	}
+
 	bool checkForSTSpace() {
-		return symbolTable.size() < 32;
+		int maxVar = (memorySize / 2) < 32 ? (memorySize / 2) : 32;
+		return symbolTable.size() < maxVar;
 	}
 
 	int getVarCount() {

@@ -15,8 +15,11 @@ void CoreObject::run() {
 		if (process && (process->getState() == 3 || process->getState() == 4))
             processFinished = true;
 
-        coreCycle++;
+        if (process && process->getState() == 4)
+            processAbrupted = true;
+
         incrementQuantumCycleCounter();
+        coreCycle++;
         schedSemaphore->release();
     }
 }

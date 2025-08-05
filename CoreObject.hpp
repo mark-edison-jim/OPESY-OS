@@ -10,6 +10,7 @@ private:
     int coreID;
     int delay;
 	std::atomic<bool> processFinished = true;
+	std::atomic<bool> processAbrupted = false;
 	std::atomic<uint64_t> coreCycle = 0;
 	std::atomic<uint64_t> activeCoreCycle = 0;
     std::shared_ptr<Process> process;
@@ -39,7 +40,6 @@ public:
     void incrementQuantumCycleCounter() {
         quantumCycleCounter++;
     }
-
 
     void setProcessWait() {
         processFinished = true;
@@ -76,6 +76,10 @@ public:
 
     void flushProcessMemory() {
         process->deallocateMemory();
+    }
+    
+    bool getProcessAbrupt() {
+        return processAbrupted.load();
     }
 
     std::shared_ptr<Process> getProcess() {

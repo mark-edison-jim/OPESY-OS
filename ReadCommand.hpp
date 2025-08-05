@@ -20,7 +20,8 @@ public:
         : ICommand(READ, pid, processRef), explicitDef(explicitDef){
         uint16_t max = processRef->getMemorySize();
         memAddress = intToHex(getRandomEvenFrom16Range(0, max - 2), 4);
-    
+        if (memAddress == "0x0400")
+            memAddress = "";
     }
 
     void setExplicit(const std::string& target, string address) {
@@ -31,6 +32,10 @@ public:
 
     bool isInvalidMem() {
         return static_cast<uint16_t>(std::stoul(memAddress, nullptr, 16)) >= processRef->getMemorySize();
+    }
+
+    std::string getMemAddress() {
+        return memAddress;
     }
 
     void execute(int cpuCoreID) override;
