@@ -16,6 +16,7 @@
 #include <iomanip>
 #include <fstream>
 #include <chrono>
+#include <regex>
 
 using namespace std::chrono;
 
@@ -45,7 +46,10 @@ int batchFreq = 0;
 uint64_t minInstructions = 0;
 uint64_t maxInstructions = 0;
 int delayPerExec = 0;
-
+uint16_t totalMemory = 0;
+uint16_t memPerBlock = 0;
+uint16_t minMemPerProcess = 0;
+uint16_t maxMemPerProcess = 0;
 
 void initializeFunc(std::string* action) {
     *action = commandMsg("'initialize' command recognized. Doing something.");
@@ -80,14 +84,26 @@ void initializeFunc(std::string* action) {
         else if (key == "delay-per-exec") {
             iss >> delayPerExec;
         }
+        else if (key == "max-overall-mem") {
+            iss >> totalMemory;
+        }
+        else if (key == "mem-per-frame") {
+            iss >> memPerBlock;
+        }
+        else if (key == "min-mem-per-proc") {
+            iss >> minMemPerProcess;
+        }
+        else if (key == "max-mem-per-proc") {
+            iss >> maxMemPerProcess;
+        }
     }
 
 	config.close();
-    
-    globalScheduler = std::make_shared<Scheduler>(numCPU, 10, minInstructions, maxInstructions, delayPerExec, batchFreq, scheduler, quantumCycles);
+    std::ofstream("csopesy-backing-store.txt", std::ios::trunc).close();
+    globalScheduler = std::make_shared<Scheduler>(numCPU, 10, minInstructions, maxInstructions, delayPerExec, batchFreq, scheduler, quantumCycles, totalMemory, memPerBlock, minMemPerProcess, maxMemPerProcess);
     std::thread schedulerThread([scheduler = globalScheduler]() {
         globalScheduler->fcfs();
-        });
+    });
     
 
     schedulerThread.detach();
@@ -105,7 +121,7 @@ void screenTerminal() {
             hist_inc = 0;
             if (command == "exit") {
                 auto screen = globalScheduler->getScreen();
-                if(screen->getProcessFinished())
+                if(screen->getProcessFinished() && !screen->getProcessAbrupted())
                     globalScheduler->deleteScreen(screen->getName());
                 globalScheduler->setActiveScreen("");
 
@@ -120,15 +136,22 @@ void screenTerminal() {
 				std::shared_ptr<Screen> screen = globalScheduler->getScreen();
 
                 bool unFinished = !screen->getProcessFinished();
+                int usedMem = globalScheduler->getUsedMemForPID(screen->getPid());
+                double usagePercent = (static_cast<double>(usedMem) / (static_cast<double>(totalMemory) / memPerBlock)) * 100.0;
 
                 std::deque<std::string> logs = screen->getLogs();
                 out << "Process name: " << screen->getName() << std::endl;
                 out << "ID: " << screen->getPid() << std::endl;
+                out << "Memory Usage: " << usedMem * memPerBlock << "B/" << totalMemory << "B" << std::endl;
+                out << "Memory Util: " << std::fixed << std::setprecision(2) << usagePercent << "%" << std::endl;
                 out << "Logs:" << std::endl;
                 for (const std::string& log : logs) {
                     out << log << std::endl;
                 }
-                if (unFinished) {
+                if (screen->getProcessAbrupted()) {
+                    out << std::endl << "Abrupted!" << std::endl << std::endl;
+                }
+                else if (unFinished) {
                     out << std::endl << "Current instrucation line: " << screen->getCurrentLine() << std::endl;
                     out << "Lines of code: " << screen->getTotalLines() << std::endl << std::endl;
                 }
@@ -166,13 +189,43 @@ void screenTerminal() {
     std::cout << activeScr << ":\\> " << command << std::endl << std::endl;
 }
 
-void screenFunc(std::string* action, std::vector<std::string> cmdTokens) {
+
+std::vector<std::string> splitCommand(const std::string& input) {
+    std::vector<std::string> tokens;
+    std::regex re(R"("([^"\\]*(\\")?[^"\\]*)*"|[^\s"]+)");
+    auto begin = std::sregex_iterator(input.begin(), input.end(), re);
+    auto end = std::sregex_iterator();
+
+    for (std::sregex_iterator i = begin; i != end; ++i) {
+        std::smatch match = *i;
+        std::string token = match.str();
+
+        // If token is quoted, remove quotes
+        if (token.size() >= 2 && token.front() == '"' && token.back() == '"') {
+            token = token.substr(1, token.size() - 2);
+        }
+
+        tokens.push_back(token);
+    }
+
+    return tokens;
+}
+
+
+//TODO: Do non demand paging
+/*
+make new functions for the backstore and load and get from physmem
+handle new logic for read and write
+make new logic for what happens if a process is loaded or put into physmem, taking up the whole mem-per-proc instead of just 1 frame.
+*/
+
+void screenFunc(std::string* action, std::vector<std::string> cmdTokens, std::string originalInput) {
     //*action = commandMsg("'screen' command recognized. Doing something.");
-    if (cmdTokens.size() == 3) {
+    if (cmdTokens.size() > 2 && cmdTokens.size() < 5) {
         std::string mode = cmdTokens[1];
         std::string name = cmdTokens[2];
         bool nameExists = globalScheduler->findScreen(name);
-        bool validMode = (mode == "-s" || mode == "-r" || mode == "-ls");
+        bool validMode = (mode == "-s" || mode == "-r" || mode == "-ls" || mode == "-c");
 
         if (!validMode) {
             *action = commandMsg("Invalid mode. Use -s or -r.");
@@ -184,7 +237,17 @@ void screenFunc(std::string* action, std::vector<std::string> cmdTokens) {
                 *action = commandMsg("<screen." + name + "> already exists...");
                 return;
             }
-			globalScheduler->addProcess(name);
+            if (cmdTokens.size()!=4) {
+                *action = commandMsg("Please use 'screen -s <name> <memory_size>'");
+                return;
+            }
+            std::string memoryString = cmdTokens[3];
+            uint16_t processMemorySize = static_cast<uint16_t>(std::stoi(memoryString));
+            if (processMemorySize < 64 || processMemorySize > 65536) {
+                *action = commandMsg("Processes memory must be in a [64 - 65536] bytes range");
+                return;
+            }
+			globalScheduler->addProcess(name, processMemorySize);
 
             *action = commandMsg("Switching to <screen." + name + ">...");
         }
@@ -193,25 +256,52 @@ void screenFunc(std::string* action, std::vector<std::string> cmdTokens) {
                 *action = commandMsg("<screen." + name + "> does not exist...");
                 return;
             }
+            std::string invalidMem = globalScheduler->getInvalidScreenMem(name);
+            if (!invalidMem.empty()) {
+                *action = commandMsg(invalidMem);
+                return;
+            }
             *action = commandMsg("Switching to <screen." + name + ">...");
         }
-
 		globalScheduler -> setActiveScreen(name);
         activeTerminal = "screen";
         hist_inc = 0;
-    }
-    else if (cmdTokens.size() == 2) {
+    }else if (cmdTokens.size() == 2) {
         std::string mode = cmdTokens[1];
         if (mode == "-ls") {
 
             *action = globalScheduler->getProcessStats().str();
         }
         else {
-            *action = commandMsg("Invalid screen command. Use 'screen -s <name>' | 'screen -r <name>' | 'screen -ls'.");
+            *action = commandMsg("Invalid screen command. Use 'screen -s <name> <memory_size>' | 'screen -c <name> <memory_size> [instructions] | 'screen -r <name>' | 'screen -ls'.");
+        }
+    }
+    else if (cmdTokens.size() >= 5) {
+        std::string mode = cmdTokens[1];
+        if (mode == "-c") {
+            std::string name = cmdTokens[2];
+            bool nameExists = globalScheduler->findScreen(name);
+            if (nameExists) {
+                *action = commandMsg("<screen." + name + "> already exists...");
+                return;
+            }
+            //screen -c process2 4096 "DECLARE varA 10; DECLARE varB 5; ADD varA varA varB; WRITE 0x500 varA; READ varC 0x500; PRINT(\"Result: \" + varC)"
+            std::string memoryString = cmdTokens[3];
+            uint16_t processMemorySize = static_cast<uint16_t>(std::stoi(memoryString));
+            std::vector<std::string> properTokens = splitCommand(originalInput);
+            globalScheduler-> addProcess(name, processMemorySize, properTokens[4]);
+
+            *action = commandMsg("Switching to <screen." + name + ">...");
+            globalScheduler->setActiveScreen(name);
+            activeTerminal = "screen";
+            hist_inc = 0;
+        }
+        else {
+            *action = commandMsg("Invalid screen command. Use 'screen -s <name> <memory_size>' | 'screen -c <name> <memory_size> [instructions] | 'screen -r <name>' | 'screen -ls'.");
         }
     }
     else {
-        *action = commandMsg("Invalid screen command. Use 'screen -s <name>' | 'screen -r <name>' | 'screen -ls'");
+        *action = commandMsg("Invalid screen command. Use 'screen -s <name> <memory_size>' | 'screen -c <name> <memory_size> [instructions] | 'screen -r <name>' | 'screen -ls'.");
     }
 }
 
@@ -258,9 +348,17 @@ void reportUtilFunc(std::string* action) {
     MyFile.close();
 }
 
-void handleInput(std::vector<std::string> cmdTokens) {
+void vmstatFunc(std::string* action) {
+    *action = globalScheduler->getVmStats().str();
+}
+
+void processSMIFunc(std::string* action) {
+    *action = globalScheduler->getPSMIStats().str();
+}
+
+void handleInput(std::vector<std::string> cmdTokens, std::string originalInput) {
     std::string action;
-    std::vector<std::string> validCommands = { "scheduler-start", "scheduler-stop", "report-util", "screen", "marquee" };
+    std::vector<std::string> validCommands = {"scheduler-start", "scheduler-stop", "report-util", "screen", "marquee", "vmstat", "process-smi"};
     std::string tempCommand = cmdTokens[0];
     if (tempCommand == "initialize") {
         initializeFunc(&action);
@@ -268,7 +366,7 @@ void handleInput(std::vector<std::string> cmdTokens) {
     else if (std::find(validCommands.begin(), validCommands.end(), tempCommand) != validCommands.end()) {
         if (isInitialized) {
             if (tempCommand == "screen") {
-                screenFunc(&action, cmdTokens);
+                screenFunc(&action, cmdTokens, originalInput);
             }
             else if (tempCommand == "scheduler-start") {
                 schedulerStartFunc(&action);
@@ -286,6 +384,12 @@ void handleInput(std::vector<std::string> cmdTokens) {
 				}
 				action = commandMsg("Switched to MARQUEE_CONSOLE...");
 			}
+            else if (tempCommand == "vmstat") {
+                vmstatFunc(&action);
+            }
+            else if (tempCommand == "process-smi") {
+                processSMIFunc(&action);
+            }
 			else
 				action = commandMsg("Command recognized but not implemented yet...");
         }
@@ -381,7 +485,7 @@ void mainTerminal() {
             }
             else {
                 cmd_hist.push_back(command);
-                handleInput(cmdTokens);
+                handleInput(cmdTokens, command);
             }
         }
 		else if ((int)ch >= 32 && (int)ch <= 126) // Printable characters

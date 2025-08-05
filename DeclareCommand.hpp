@@ -1,5 +1,6 @@
 #pragma once
 #include "ICommand.hpp"
+#include "Process.hpp"
 #include <string>
 #include <utility>
 
@@ -10,13 +11,14 @@ private:
 	std::string targVar;
 	uint16_t exp_value;
 
-	bool explicitDef = false;
+	std::atomic<bool> explicitDef = false;
 	void declareExplicitVar();
 	void assignToVar(uint16_t);
 	std::pair<uint16_t, uint16_t> getVariable();
 
 public:
-	DeclareCommand(int pid, std::shared_ptr<std::unordered_map<std::string, uint16_t>> symbolTable, bool explicitDef);
+	DeclareCommand(int pid, bool explicitDef, Process* processRef) : ICommand(DECLARE, pid, processRef), explicitDef(explicitDef) {
+	};
 	void execute(int) override;
 	std::string getText() override {
 		return text;

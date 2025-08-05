@@ -6,14 +6,19 @@
 void CoreObject::run() {
     while (true) {
         coreSemaphore->acquire();
+        std::lock_guard<std::mutex> lock(processMutex);
         if (process && coreCycle > 0 && coreCycle % (delay+1) == 0) {
             process->runCommand();
-            incrementQuantumCycleCounter();
+            activeCoreCycle++;
             //coreCycle = 1;
         }
-		if (process && process->getState() == 3)
+		if (process && (process->getState() == 3 || process->getState() == 4))
             processFinished = true;
 
+        if (process && process->getState() == 4)
+            processAbrupted = true;
+
+        incrementQuantumCycleCounter();
         coreCycle++;
         schedSemaphore->release();
     }

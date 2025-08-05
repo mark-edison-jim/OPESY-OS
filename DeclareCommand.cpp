@@ -8,13 +8,22 @@
 #include <iterator>
 
 void DeclareCommand::declareExplicitVar(){
-    (*symbolTable)[targVar] = exp_value;
+    if (!processRef->getSymbolTable().contains(targVar) && processRef->checkForSTSpace()) {
+        uint16_t val = getRandomUint16();
+        processRef->incrementVarCount();
+        processRef->loadToPhysMem(targVar, val);
+    }
+
+    processRef->loadToPhysMem(targVar, exp_value);
+    //(*symbolTable)[targVar] = exp_value;
 }
 
 void DeclareCommand::assignToVar(uint16_t result) {
-    std::string varName = "var" + symbolTable->size();
+    std::string varName = "var" + std::to_string(processRef->getVarCount());
     uint16_t val1 = getRandomUint16();
-    symbolTable->insert({ varName, result });
+    processRef->incrementVarCount();
+    processRef->loadToPhysMem(varName, result);
+    //symbolTable->insert({ varName, result });
 }
 
 std::pair<uint16_t, uint16_t> DeclareCommand::getVariable()
@@ -22,14 +31,10 @@ std::pair<uint16_t, uint16_t> DeclareCommand::getVariable()
     return std::pair<uint16_t, uint16_t>();
 }
 
-
-DeclareCommand::DeclareCommand(int pid, std::shared_ptr<std::unordered_map<std::string, uint16_t>> symbolTable, bool explicitDef) : ICommand(ADD, pid, symbolTable), explicitDef(explicitDef) {
-}
-
 void DeclareCommand::execute(int cpuCoreID) {
     //ICommand::execute(); 
-    if (symbolTable->size() < 32) {
-        if (explicitDef) {
+    if (processRef->checkForSTSpace()) {
+        if (explicitDef.load()) {
 			declareExplicitVar();
 		}else
             assignToVar(getRandomUint16());

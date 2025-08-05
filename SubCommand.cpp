@@ -8,73 +8,99 @@
 #include <iterator>
 
 std::pair<uint16_t, uint16_t> SubCommand::getVariable() {
-
-    if (symbolTable->empty()) {
-        std::string varName = "var0";
-        uint16_t val1 = getRandomUint16();
-        symbolTable->insert({ varName, val1 });
-    }
-    if (symbolTable->size() < 2) {
-        std::string varName = "var1";
-        uint16_t val2 = getRandomUint16();
-        symbolTable->insert({ varName, val2 });
+    // Ensure at least 2 variables exist
+    while (processRef->getSymbolTableSize() < 2) {
+        std::string varName = "var" + std::to_string(processRef->getVarCount());
+        uint16_t val = getRandomUint16();
+        processRef->incrementVarCount();
+        processRef->loadToPhysMem(varName, val);
     }
 
-    int tableSize = symbolTable->size();
+    int tableSize = processRef->getSymbolTableSize();
 
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_int_distribution<> distr(0, tableSize - 1);
 
-    // Select two distinct indices
     int index1 = distr(gen);
     int index2;
     do {
         index2 = distr(gen);
     } while (index2 == index1);
 
-    auto it1 = symbolTable->begin();
+    auto symbolTable = processRef->getSymbolTable();
+    auto it1 = symbolTable.begin();
     std::advance(it1, index1);
 
-    auto it2 = symbolTable->begin();
+    auto it2 = symbolTable.begin();
     std::advance(it2, index2);
 
-    uint16_t value1 = static_cast<uint16_t>(it1->second);
-    uint16_t value2 = static_cast<uint16_t>(it2->second);
+    uint16_t value1 = processRef->getFromPhysMem(it1->first);
+    uint16_t value2 = processRef->getFromPhysMem(it2->first);
 
     return { value1, value2 };
 }
 
+
+//void SubCommand::assignToVar(uint16_t result) {
+//    int tableSize = symbolTable->size();
+//
+//    std::random_device rd;
+//    std::mt19937 gen(rd());
+//    std::uniform_int_distribution<> distr(0, tableSize - 1);
+//
+//    int index = distr(gen);
+//    auto it = symbolTable->begin();
+//    std::advance(it, index);
+//
+//    it->second = result;
+//}
+
 void SubCommand::assignToVar(uint16_t result) {
-    int tableSize = symbolTable->size();
+    int tableSize = processRef->getSymbolTableSize();
 
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_int_distribution<> distr(0, tableSize - 1);
 
     int index = distr(gen);
-    auto it = symbolTable->begin();
+    auto symbolTable = processRef->getSymbolTable();
+    auto it = symbolTable.begin();
     std::advance(it, index);
 
-    it->second = result;
+    processRef->loadToPhysMem(it->first, result);
+    //it->second = result;
 }
 
 void SubCommand::computeExplicitValues() {
+    auto symbolTable = processRef->getSymbolTable();
     uint16_t left = exp_value1;
     uint16_t right = exp_value2;
     if (!exp_var1.empty())
-        left = (*symbolTable)[exp_var1];
+        left = processRef->getFromPhysMem(exp_var1);
     if (!exp_var2.empty())
-        right = (*symbolTable)[exp_var2];
-    (*symbolTable)[targVar] = left - right;
-}
+        right = processRef->getFromPhysMem(exp_var2);
 
-SubCommand::SubCommand(int pid, std::shared_ptr<std::unordered_map<std::string, uint16_t>> symbolTable, bool explicitDef) : ICommand(ADD, pid, symbolTable), explicitDef(explicitDef) {
-    this->text = text;
+    processRef->loadToPhysMem(targVar, left - right);
+    //(*symbolTable)[targVar] = left + right;
+
 }
+//void SubCommand::computeExplicitValues() {
+//    uint16_t left = exp_value1;
+//    uint16_t right = exp_value2;
+//    if (!exp_var1.empty())
+//        left = (*symbolTable)[exp_var1];
+//    if (!exp_var2.empty())
+//        right = (*symbolTable)[exp_var2];
+//    (*symbolTable)[targVar] = left - right;
+//}
+
+//SubCommand::SubCommand(int pid, std::shared_ptr<std::unordered_map<std::string, uint16_t>> symbolTable, bool explicitDef) : ICommand(SLEEP, pid, symbolTable), explicitDef(explicitDef) {
+//    this->text = text;
+//}
 
 void SubCommand::execute(int cpuCoreID) {
-    if (explicitDef) {
+    if (explicitDef.load()) {
         computeExplicitValues();
         return;
     }
@@ -83,8 +109,8 @@ void SubCommand::execute(int cpuCoreID) {
     uint16_t firstValue = values.first;
     uint16_t secondValue = values.second;
 
-	uint16_t higher = std::max(firstValue, secondValue);
-	uint16_t lower = std::min(firstValue, secondValue);
+    uint16_t higher = (((firstValue) > (secondValue)) ? (firstValue) : (secondValue));
+    uint16_t lower = (((firstValue) < (secondValue)) ? (firstValue) : (secondValue));
 
     uint16_t result = higher - lower;
 

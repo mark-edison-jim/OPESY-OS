@@ -1,5 +1,6 @@
 #pragma once
 #include "ICommand.hpp"
+#include "Process.hpp"
 #include <string>
 #include <utility>
 
@@ -12,9 +13,9 @@ private:
 
 	void assignToVar(uint16_t);
 	std::pair<uint16_t, uint16_t> getVariable();
-	bool explicitDef = false;
+	std::atomic<bool> explicitDef = false;
 public:
-	SleepCommand(int pid, std::shared_ptr<std::unordered_map<std::string, uint16_t>> symbolTable, bool explicitDef);
+	SleepCommand(int pid, bool explicitDef, Process* processRef) : ICommand(SLEEP, pid, processRef), explicitDef(explicitDef) {};
 	void execute(int) override;
 	std::string getText() override {
 		return text;
@@ -23,7 +24,7 @@ public:
 		return logText;
 	}
 	uint8_t getSleepTime() const {
-		if (explicitDef)
+		if (explicitDef.load())
 			return exp_sleepTime;
 		else
 			return sleepTime;

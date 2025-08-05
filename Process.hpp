@@ -12,37 +12,45 @@
 #include <mutex>
 #include "screenTerminal.hpp"
 #include <unordered_map>
+#include "MemoryAllocator.hpp"
 
 class Process {
 private:
 	int pid;
 	std::string name;
 	std::vector<std::unique_ptr<ICommand>> commandList;
-	//std::shared_ptr<std::mutex> logsMtx;
+
 	std::deque<std::string> logs;
+
+	std::atomic<int> variableCount = 0;
 
 	std::shared_ptr<Screen> screenRef;
 
-	int commandIndex = 0;
+	uint64_t commandIndex = 0;
+
 	int cpuCoreID = -1;
 	uint64_t totalLines;
 	std::string creationDate = getTime();
 
-	std::shared_ptr<std::unordered_map<std::string, uint16_t>> symbolTable = std::make_shared<std::unordered_map<std::string, uint16_t>>();
+	std::unordered_map<std::string, std::string> symbolTable = std::unordered_map < std::string, std::string >();
 
-	//struct RequirementFlags {
-	//	bool requireFiles;
-	//	int numFiles;
-	//	bool requireMemory;
-	//	int memoryRequired;
-	//};
+	uint16_t pageSize;
+	uint16_t memorySize;
+
+	int numPages;
+	std::vector<int> pageToFrame;
+
+	std::string currentAddress = "0x0000";
+	std::shared_ptr<MemoryAllocator> memAccRef;
 
 	enum ProcessState {
 		READY,
 		RUNNING,
 		WAITING,
-		FINISHED
+		FINISHED,
+		MEMORY_FAULT
 	};
+
 	std::atomic<ProcessState> state = READY;
 
 	//Process(int pid, std::string name, RequirementFlags requirements);
@@ -53,18 +61,19 @@ private:
 	//bool isFinished() const;
 	//int getRemainingTime() const;
 
-
-
-
 public:
-	Process(int pid, const std::string& name, uint64_t totalLines, std::shared_ptr<Screen> screen)
-		: pid(pid), name(name), totalLines(totalLines), screenRef(screen){
+	Process(int pid, const std::string& name, uint64_t totalLines, std::shared_ptr<Screen> screen, uint16_t memorySize, uint16_t sizePerPage, std::shared_ptr<MemoryAllocator> memAcc)
+		: pid(pid), name(name), totalLines(totalLines), screenRef(screen), memorySize(memorySize), pageSize(sizePerPage), memAccRef(memAcc) {
+		numPages = static_cast<int>(memorySize / sizePerPage);
+		numPages = numPages >= 1 ? numPages : 1;
+		pageToFrame.resize(numPages, -1);
+		memAccRef->createInitialBSPages(numPages, pid);
 	}
 	void generateRandomCommands();
 	void runCommand();
 	void beginProcess(int);
 	void moveToNextLine();
-	int getCommandIndex() const;
+	uint64_t getCommandIndex() const;
 	int getLinesOfCode() const;
 	int getPID() const;
 	int getCpuCoreID() const;
@@ -72,16 +81,75 @@ public:
 	std::string getDate();
 	ProcessState getState() const;
 	void handleForInstruction(int, int);
+	void handleExplicitForInstruction(int, std::string, int);
 	void setWaiting() {
 		state = WAITING;
 	}
 	void setFinished();
+	void setInvalidMem();
 	std::deque<std::string> getLogs() const {
 		//std::lock_guard<std::mutex> logLock(mtx);
 		return logs;
 	}
+	void loadToPhysMem(std::string, uint16_t);
+	int checkAccessPhysMem(int pageNumber);
+	int checkAccessPhysMemAlt(int pageNumber);
+	uint16_t getFromPhysMem(std::string varName);
+
+	void deallocateMemory() {
+		symbolTable.clear();
+		memAccRef->removeFrames(pageToFrame, pid);
+		//memAccRef->removeFromBS(pid);
+	}
+
+	std::vector<int> getP2F() {
+		return pageToFrame;
+	}
+
+	std::string incrementHexString(const std::string& hexStr) {
+		std::string hexNum = hexStr.substr(2);                // Remove "0x"
+		unsigned int num = std::stoul(hexNum, nullptr, 16);  
+		num+=2;                                               
+		std::stringstream ss;
+		ss << "0x" << std::uppercase << std::setfill('0')
+			<< std::setw(4) << std::hex << num;                // Format as 0xXXXX
+		return ss.str();
+	}
+
+	uint16_t getMemorySize() {
+		return memorySize;
+	}
+
+	auto getSymbolTable() {
+		return symbolTable;
+	}
+
+	int getSymbolTableSize() {
+		return symbolTable.size();
+	}
+
+	int getNumPages() {
+		return numPages;
+	}
+
+	bool checkForSTSpace() {
+		int maxVar = (memorySize / 2) < 32 ? (memorySize / 2) : 32;
+		return symbolTable.size() < maxVar;
+	}
+
+	int getVarCount() {
+		return variableCount.load();
+	}
+
+	void incrementVarCount() {
+		variableCount++;
+	}
+
 	void commandSwitchCase(ICommand::CommandType, int, int);
 	void fixedCommandSet();
+	void fixedCommandSet(std::string);
 	void fixedSymbols();
-	//RequirementFlags requirements;
+	void explicitCommandSwitchCase(ICommand::CommandType type, std::vector<std::string> cmdTokens, int depth);
+	uint16_t readFromPhysMem(std::string memaddress);
+	void loadToPhysMemAddress(std::string memaddress, uint16_t value);
 };

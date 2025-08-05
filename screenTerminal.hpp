@@ -15,7 +15,10 @@ private:
     std::deque<std::string> logs;
     std::vector<std::string> commandHistory;
     std::vector<std::string> outputHistory;
+    std::string invalidAddress = "";
     bool processFinished = false;
+    bool invalidMem = false;
+    std::string timeInvalidOccured;
 
 public:
     Screen() = default;
@@ -31,7 +34,19 @@ public:
         return processFinished;
     }
 
-	int getPid() const {
+    bool getProcessAbrupted() const {
+        return invalidMem;
+    }
+
+    std::string getTimeInvalid() {
+        return timeInvalidOccured;
+    }
+
+    std::string getInvalidAddress() {
+        return invalidAddress;
+    }
+
+    size_t getPid() const {
 		return pid;
 	}
 
@@ -43,6 +58,10 @@ public:
 		return totalLines;
 	}
 
+    void setTotalLines(int lines) {
+        totalLines = lines;
+    }
+
     const std::vector<std::string> getCommands() const;
     const std::vector<std::string> getOutputs() const;
 
@@ -53,6 +72,8 @@ public:
     void update(const std::deque<std::string>&, int);
     
     void finish(const std::deque<std::string>&);
+
+    void invalidFinish(const std::deque<std::string>& finalLogs, std::string);
 
     void addCommand(const std::string& cmd, const std::string& output);
 

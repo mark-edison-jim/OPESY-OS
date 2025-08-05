@@ -107,8 +107,8 @@
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <ConformanceMode>true</ConformanceMode>
-      <LanguageStandard>stdcpplatest</LanguageStandard>
+      <ConformanceMode>false</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
       <AdditionalIncludeDirectories>
       </AdditionalIncludeDirectories>
     </ClCompile>
@@ -145,14 +145,18 @@
     <ClCompile Include="Figlet.cc" />
     <ClCompile Include="Figlet_Font_standard.cc" />
     <ClCompile Include="ICommand.cpp" />
+    <ClCompile Include="MemoryAllocator.cpp" />
     <ClCompile Include="OPESY OS.cpp" />
     <ClCompile Include="PrintCommand.cpp" />
     <ClCompile Include="Process.cpp" />
+    <ClCompile Include="ReadCommand.cpp" />
     <ClCompile Include="Scheduler.cpp" />
     <ClCompile Include="screenTerminal.cpp" />
     <ClCompile Include="SleepCommand.cpp" />
     <ClCompile Include="SubCommand.cpp" />
     <ClCompile Include="utils.cpp" />
+    <ClCompile Include="WriteCommand.cpp" />
+    <ClCompile Include="WriteCommand.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AddCommand.hpp" />
@@ -161,8 +165,10 @@
     <ClInclude Include="DeclareCommand.hpp" />
     <ClInclude Include="Figlet.hh" />
     <ClInclude Include="ICommand.hpp" />
+    <ClInclude Include="MemoryAllocator.hpp" />
     <ClInclude Include="PrintCommand.hpp" />
     <ClInclude Include="Process.hpp" />
+    <ClInclude Include="ReadCommand.hpp" />
     <ClInclude Include="Scheduler.hpp" />
     <ClInclude Include="screenTerminal.hpp" />
     <ClInclude Include="SleepCommand.hpp" />
